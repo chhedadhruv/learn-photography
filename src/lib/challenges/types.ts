@@ -18,6 +18,12 @@ export interface Challenge {
   /** Controls the player operates. Everything else is set automatically and shown as locked. */
   readonly unlocked: readonly ControlName[];
   readonly goals: readonly Goal[];
+  /**
+   * How many stops away from correct the unlocked controls start. Declared per challenge rather
+   * than fixed globally, so a player learns to read the meter instead of memorising "three
+   * clicks right".
+   */
+  readonly startOffsetStops: number;
 }
 
 const controlName = z.enum(["shutter", "aperture", "iso"]);
@@ -41,4 +47,10 @@ export const challengeSchema = z.object({
   hint: z.string().min(10),
   unlocked: z.array(controlName).min(1),
   goals: z.array(goal).min(1),
+  startOffsetStops: z
+    .number()
+    .int()
+    .refine((n) => Math.abs(n) >= 1 && Math.abs(n) <= 5, {
+      message: "must be between 1 and 5 stops away from correct, in either direction",
+    }),
 });

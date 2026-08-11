@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { evaluateExposure } from "./exposure";
+import { APERTURES, ISOS, SHUTTER_SPEEDS } from "./values";
 import {
   autoFillLockedControls,
   canReachCorrectExposure,
   meterScene,
+  offsetUnlockedControls,
+  startingSettings,
   subjectEv100,
   type ControlName,
 } from "./meter";
@@ -153,5 +156,116 @@ describe("canReachCorrectExposure", () => {
 
     expect(evaluateExposure(settings, 15).verdict).toBe("correct");
     expect(canReachCorrectExposure(settings, [], 15)).toBe(true);
+  });
+});
+
+/**
+ * A challenge that opens on its own answer teaches nothing: the player presses capture, scores
+ * full marks, and learns that the button works. These guard the opposite property from
+ * solvability, and both matter.
+ */
+describe("startingSettings", () => {
+  const request = {
+    scene: even,
+    unlocked: ["shutter"] as ControlName[],
+    focalLengthMm: 50,
+    focusDistanceM: 5,
+  };
+
+  it("does not open on a correct exposure", () => {
+    const start = startingSettings(request, 3);
+
+    expect(start).not.toBeNull();
+    if (!start) return;
+    expect(evaluateExposure(start, subjectEv100(even)).verdict).not.toBe("correct");
+  });
+
+  it("opens the requested number of stops away", () => {
+    const start = startingSettings(request, 3);
+    if (!start) return;
+
+    expect(Math.abs(evaluateExposure(start, subjectEv100(even)).deviationStops)).toBeCloseTo(3, 1);
+  });
+
+  it("leaves the answer reachable from where it opens", () => {
+    const start = startingSettings(request, 3);
+    if (!start) return;
+
+    expect(canReachCorrectExposure(start, request.unlocked, subjectEv100(even))).toBe(true);
+  });
+
+  it("keeps the locked controls at their automatic values", () => {
+    const auto = autoFillLockedControls(request);
+    const start = startingSettings(request, 3);
+    if (!auto || !start) return;
+
+    expect(start.aperture).toBe(auto.aperture);
+    expect(start.iso).toBe(auto.iso);
+  });
+
+  it("holds for every level's control set", () => {
+    const sets: ControlName[][] = [
+      ["shutter"],
+      ["aperture"],
+      ["iso"],
+      ["shutter", "aperture"],
+      ["shutter", "aperture", "iso"],
+    ];
+
+    for (const unlocked of sets) {
+      const start = startingSettings({ ...request, unlocked }, 3);
+
+      expect(start, `no start for ${unlocked.join("+")}`).not.toBeNull();
+      if (!start) continue;
+
+      expect(evaluateExposure(start, subjectEv100(even)).verdict).not.toBe("correct");
+      expect(canReachCorrectExposure(start, unlocked, subjectEv100(even))).toBe(true);
+    }
+  });
+
+  it("falls back to the other direction rather than opening solved", () => {
+    // A huge offset clamps against the end of the ladder; the result must still not be correct.
+    const start = startingSettings(request, 5);
+    if (!start) return;
+
+    expect(evaluateExposure(start, subjectEv100(even)).verdict).not.toBe("correct");
+  });
+});
+
+describe("offsetUnlockedControls", () => {
+  const base = {
+    shutterSeconds: 1 / 128,
+    aperture: 5.656854249492381,
+    iso: 100,
+    focalLengthMm: 50,
+    focusDistanceM: 5,
+  };
+
+  it("moves a positive offset towards overexposure", () => {
+    const shifted = offsetUnlockedControls(base, ["shutter"], 2);
+
+    // A longer exposure lets more light in.
+    expect(shifted.shutterSeconds).toBeGreaterThan(base.shutterSeconds);
+  });
+
+  it("leaves locked controls untouched", () => {
+    const shifted = offsetUnlockedControls(base, ["shutter"], 2);
+
+    expect(shifted.aperture).toBe(base.aperture);
+    expect(shifted.iso).toBe(base.iso);
+  });
+
+  it("opens the aperture for a positive offset, since wider admits more light", () => {
+    const shifted = offsetUnlockedControls(base, ["aperture"], 2);
+
+    expect(shifted.aperture).toBeLessThan(base.aperture);
+  });
+
+  it("always lands on a real rung of the ladder", () => {
+    const shifted = offsetUnlockedControls(base, ["shutter", "aperture", "iso"], 3);
+
+    expect(SHUTTER_SPEEDS).toContain(shifted.shutterSeconds);
+    expect(APERTURES).toContain(shifted.aperture);
+    expect(ISOS).toContain(shifted.iso);
   });
 });

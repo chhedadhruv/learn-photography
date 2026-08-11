@@ -4,10 +4,15 @@ import { FULL_FRAME, type Scene } from "@/lib/sim/types";
  * Kinematics for the pendulum rig, kept free of three.js so the motion the renderer draws and
  * the motion the rubric grades come from one set of equations.
  *
- * A pendulum's speed varies through its arc, while `motion.ts` models a constant speed. The
- * reconciliation is that capture is always centred on the bottom of the swing, where speed is at
- * its maximum and, over any shutter speed this challenge offers, very nearly constant.
- * `pendulum.test.ts` measures that divergence rather than assuming it.
+ * A pendulum's speed varies through its arc, while `motion.ts` models a constant speed. Rather
+ * than forcing every capture to the bottom of the swing — which made the shutter button a
+ * formality, since the bob was always in the same place — the exposure is centred on the moment
+ * the player actually pressed it, and grading uses the *effective* speed: the distance the bob
+ * genuinely covered during that exposure, divided by its duration.
+ *
+ * That is exact by construction rather than an approximation. The smear the renderer produces
+ * spans precisely the displacement `effectiveSpeedMps` is derived from, so no matter where in
+ * the arc the shot was taken, what is graded is what was drawn.
  */
 
 const GRAVITY = 9.81;
@@ -62,12 +67,52 @@ export function maxSpeedMps(rig: PendulumRig): number {
 }
 
 /**
- * Distance actually travelled during an exposure centred on the bottom of the swing, following
- * the true arc rather than assuming constant speed.
+ * Distance actually travelled during an exposure centred on `centreSeconds`, following the true
+ * arc rather than assuming a constant speed.
  */
-export function travelDuringExposureM(rig: PendulumRig, shutterSeconds: number): number {
+export function travelDuringExposureM(
+  rig: PendulumRig,
+  shutterSeconds: number,
+  centreSeconds = 0,
+): number {
   const half = shutterSeconds / 2;
-  return Math.abs(horizontalOffsetM(rig, half) - horizontalOffsetM(rig, -half));
+  return Math.abs(
+    horizontalOffsetM(rig, centreSeconds + half) - horizontalOffsetM(rig, centreSeconds - half),
+  );
+}
+
+/**
+ * The constant speed that would produce exactly the smear this exposure produced.
+ *
+ * Feeding this to `subjectBlurPx` makes the graded blur identical to the rendered blur for any
+ * moment in the swing — including near the turning points, where the bob is barely moving and a
+ * peak-speed figure would badly overstate the blur.
+ */
+export function effectiveSpeedMps(
+  rig: PendulumRig,
+  shutterSeconds: number,
+  centreSeconds: number,
+): number {
+  if (shutterSeconds <= 0) return 0;
+  return travelDuringExposureM(rig, shutterSeconds, centreSeconds) / shutterSeconds;
+}
+
+/** Horizontal speed at an instant: d/dt of L·sin(θ). Zero at the turning points. */
+export function instantaneousSpeedMps(rig: PendulumRig, t: number): number {
+  const omega = angularFrequency(rig);
+  const theta = angleAt(rig, t);
+  return Math.abs(rig.lengthM * Math.cos(theta) * rig.amplitudeRad * omega * Math.cos(omega * t));
+}
+
+/**
+ * How fast the bob was moving relative to its own maximum, 0–1.
+ *
+ * Lets the critique tell a player who froze the shot by catching the bob at the end of its
+ * swing from one who did it with shutter speed. Both are real photographs; only one is the
+ * lesson.
+ */
+export function speedFraction(rig: PendulumRig, shutterSeconds: number, centreSeconds: number) {
+  return effectiveSpeedMps(rig, shutterSeconds, centreSeconds) / maxSpeedMps(rig);
 }
 
 /** The scene as the simulation core sees it: brightness, distances and speed. */

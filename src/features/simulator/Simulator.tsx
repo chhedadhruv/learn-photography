@@ -3,7 +3,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { describePhotograph } from "@/lib/sim/describe";
 import { evaluateExposure } from "@/lib/sim/exposure";
-import { autoFillLockedControls, subjectEv100, type ControlName } from "@/lib/sim/meter";
+import { startingSettings, subjectEv100, type ControlName } from "@/lib/sim/meter";
 import { score, type ScoreResult } from "@/lib/sim/scoring";
 import type { CameraSettings, Scene } from "@/lib/sim/types";
 import { usePrefersReducedMotion } from "@/lib/usePrefersReducedMotion";
@@ -11,6 +11,7 @@ import type { Challenge } from "@/lib/challenges/types";
 import { Controls } from "./Controls";
 import { ExposureMeter } from "./ExposureMeter";
 import { ResultPanel } from "./ResultPanel";
+import { PENDULUM_RIG, effectiveSpeedMps, speedFraction } from "./scene/pendulum";
 import { Viewfinder, type ViewfinderMode } from "./render/Viewfinder";
 
 interface SimulatorProps {
@@ -24,16 +25,20 @@ export function Simulator({ challenge, scene, focalLengthMm, onScored }: Simulat
   const reducedMotion = usePrefersReducedMotion();
 
   /**
-   * Locked controls are chosen by the same search that guarantees the unlocked ones can still
-   * reach a correct exposure, so the level is winnable by construction rather than by luck.
+   * Locked controls take the automatic values from the search that proves the level is winnable.
+   * The unlocked ones deliberately start wrong — opening on the answer would mean pressing
+   * capture scores full marks and teaches nothing.
    */
   const initial = useMemo<CameraSettings>(() => {
-    const auto = autoFillLockedControls({
-      scene,
-      unlocked: challenge.unlocked,
-      focalLengthMm,
-      focusDistanceM: scene.subjectDistanceM,
-    });
+    const auto = startingSettings(
+      {
+        scene,
+        unlocked: challenge.unlocked,
+        focalLengthMm,
+        focusDistanceM: scene.subjectDistanceM,
+      },
+      challenge.startOffsetStops,
+    );
 
     return (
       auto ?? {
@@ -44,11 +49,17 @@ export function Simulator({ challenge, scene, focalLengthMm, onScored }: Simulat
         focusDistanceM: scene.subjectDistanceM,
       }
     );
-  }, [challenge.unlocked, focalLengthMm, scene]);
+  }, [challenge.startOffsetStops, challenge.unlocked, focalLengthMm, scene]);
 
   const [settings, setSettings] = useState<CameraSettings>(initial);
   const [mode, setMode] = useState<ViewfinderMode>("live");
-  const [result, setResult] = useState<ScoreResult | null>(null);
+  interface Captured {
+    readonly scene: Scene;
+    readonly result: ScoreResult;
+    readonly caughtSlow: boolean;
+  }
+
+  const [captured, setCaptured] = useState<Captured | null>(null);
 
   const exposure = evaluateExposure(settings, subjectEv100(scene));
 
@@ -65,20 +76,42 @@ export function Simulator({ challenge, scene, focalLengthMm, onScored }: Simulat
     setMode("capturing");
   }, []);
 
-  /** Fired once the accumulation has finished, so the score matches the frame on screen. */
-  const handleCaptured = useCallback(() => {
-    const scored = score({ settings, scene, goals: challenge.goals });
-    setResult(scored);
-    setMode("captured");
-    onScored?.(scored.stars);
-  }, [challenge.goals, onScored, scene, settings]);
+  /**
+   * Fired once the accumulation has finished, carrying the instant the exposure was centred on.
+   *
+   * The scene is re-derived for that moment: the bob's speed depends on where it was in its
+   * swing, so grading a shot taken near the turning point against the peak speed would report a
+   * blur that is not in the photograph. `effectiveSpeedMps` is the constant speed that produces
+   * exactly the smear that was rendered, which keeps what is graded identical to what is drawn.
+   */
+  const handleCaptured = useCallback(
+    (captureTimeSeconds: number) => {
+      const speed = effectiveSpeedMps(PENDULUM_RIG, settings.shutterSeconds, captureTimeSeconds);
+      const capturedScene: Scene = { ...scene, subjectSpeedMps: speed };
+
+      const scored = score({ settings, scene: capturedScene, goals: challenge.goals });
+
+      setCaptured({
+        scene: capturedScene,
+        result: scored,
+        // Catching the bob at the end of its swing freezes it without a fast shutter. That is a
+        // real photograph and a real skill, but it is not the lesson, so the critique says so.
+        caughtSlow: speedFraction(PENDULUM_RIG, settings.shutterSeconds, captureTimeSeconds) < 0.4,
+      });
+      setMode("captured");
+      onScored?.(scored.stars);
+    },
+    [challenge.goals, onScored, scene, settings],
+  );
 
   const handleRetake = useCallback(() => {
-    setResult(null);
+    setCaptured(null);
     setMode("live");
   }, []);
 
-  const description = describePhotograph(settings, scene);
+  // Before a capture, describe the live scene at the bob's peak speed; afterwards, describe the
+  // photograph that was actually taken.
+  const description = describePhotograph(settings, captured?.scene ?? scene);
 
   return (
     <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
@@ -120,8 +153,17 @@ export function Simulator({ challenge, scene, focalLengthMm, onScored }: Simulat
 
         <ExposureMeter deviationStops={exposure.deviationStops} />
 
-        {mode === "captured" && result ? (
-          <ResultPanel result={result} description={description} onRetake={handleRetake} />
+        {mode === "captured" && captured ? (
+          <ResultPanel
+            result={captured.result}
+            description={description}
+            note={
+              captured.caughtSlow
+                ? "You caught the bob near the end of its swing, where it is barely moving. That is a legitimate way to get a sharp shot — but try again as it passes through the centre, where shutter speed is what decides it."
+                : undefined
+            }
+            onRetake={handleRetake}
+          />
         ) : (
           <>
             <button
