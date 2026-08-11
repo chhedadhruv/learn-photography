@@ -37,3 +37,8 @@
 This version differs from training data — read `node_modules/next/dist/docs/` before using an
 API rather than recalling it. Route props use the generated global types (`LayoutProps<"/">`,
 `PageProps<"/route">`).
+
+Those globals are **generated into `.next/types/` and do not exist in a clean tree**, so
+`yarn typecheck` runs `next typegen` first. Never assume a check that passes locally passes in
+CI — a stale `.next/` directory masked exactly this failure once. Verify against a clean tree
+(`rm -rf .next`) before pushing anything that touches types or the build.
