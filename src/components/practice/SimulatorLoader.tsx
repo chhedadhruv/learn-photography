@@ -3,7 +3,6 @@
 import dynamic from "next/dynamic";
 import { useState } from "react";
 import type { Challenge } from "@/lib/challenges/types";
-import type { Scene } from "@/lib/sim/types";
 
 /**
  * The gate that keeps three.js out of everything except the pages that need it.
@@ -22,18 +21,16 @@ const Simulator = dynamic(
 
 interface SimulatorLoaderProps {
   readonly challenge: Challenge;
-  readonly scene: Scene;
-  readonly focalLengthMm: number;
+  /**
+   * The scene's id, not the scene itself. A SceneSpec carries functions, and functions cannot
+   * cross the server/client boundary — so the client looks the spec up for itself.
+   */
+  readonly sceneId: string;
   /** Start loaded, for a dedicated practice page where the simulator is the whole point. */
   readonly autoStart?: boolean;
 }
 
-export function SimulatorLoader({
-  challenge,
-  scene,
-  focalLengthMm,
-  autoStart = false,
-}: SimulatorLoaderProps) {
+export function SimulatorLoader({ challenge, sceneId, autoStart = false }: SimulatorLoaderProps) {
   const [started, setStarted] = useState(autoStart);
 
   if (!started) {
@@ -57,7 +54,7 @@ export function SimulatorLoader({
     );
   }
 
-  return <Simulator challenge={challenge} scene={scene} focalLengthMm={focalLengthMm} />;
+  return <Simulator challenge={challenge} sceneId={sceneId} />;
 }
 
 function Skeleton({ label }: { readonly label: string }) {

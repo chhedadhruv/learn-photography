@@ -70,6 +70,14 @@ export interface AutoFillRequest {
   readonly focusDistanceM: number;
   /** Grade exposure against this. Defaults to the subject's brightness. */
   readonly targetEv100?: number;
+  /**
+   * Slowest shutter the automatic choice may pick, for scenes meant to be shot hand-held.
+   *
+   * Without it, a dim scene is "solved" by leaving the shutter open for a quarter of a second —
+   * which exposes correctly, teaches nothing about ISO, and would be an unusable photograph in
+   * a real pair of hands.
+   */
+  readonly maxShutterSeconds?: number;
 }
 
 /**
@@ -98,16 +106,56 @@ export function autoFillLockedControls(request: AutoFillRequest): CameraSettings
 
       // Ideal shutter for this aperture and ISO, before snapping to the ladder.
       const idealShutter = aperture ** 2 / 2 ** target;
+      const cappedShutter =
+        request.maxShutterSeconds === undefined
+          ? idealShutter
+          : Math.min(idealShutter, request.maxShutterSeconds);
 
       const settings: CameraSettings = {
-        shutterSeconds: nearestValue(SHUTTER_SPEEDS, idealShutter),
+        shutterSeconds: nearestValue(SHUTTER_SPEEDS, cappedShutter),
         aperture,
         iso,
         focalLengthMm,
         focusDistanceM,
       };
 
-      if (canReachCorrectExposure(settings, unlocked, targetEv100)) return settings;
+      if (canReachCorrectExposure(settings, unlocked, targetEv100, request.maxShutterSeconds)) {
+        return settings;
+      }
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Finds a setting of the unlocked controls that exposes correctly, holding the rest fixed.
+ *
+ * Separate from `autoFillLockedControls`, which chooses the *locked* values. Once those are
+ * pinned — either automatically or by the challenge — this is what works out the answer the
+ * player is meant to arrive at.
+ */
+export function solveExposure(
+  base: CameraSettings,
+  unlocked: readonly ControlName[],
+  targetEv100: number,
+  maxShutterSeconds?: number,
+): CameraSettings | null {
+  const allShutters =
+    maxShutterSeconds === undefined
+      ? SHUTTER_SPEEDS
+      : SHUTTER_SPEEDS.filter((seconds) => seconds <= maxShutterSeconds);
+
+  const shutters = unlocked.includes("shutter") ? allShutters : [base.shutterSeconds];
+  const apertures = unlocked.includes("aperture") ? APERTURES : [base.aperture];
+  const isos = unlocked.includes("iso") ? ISOS : [base.iso];
+
+  for (const shutterSeconds of shutters) {
+    for (const aperture of apertures) {
+      for (const iso of isos) {
+        const candidate: CameraSettings = { ...base, shutterSeconds, aperture, iso };
+        if (evaluateExposure(candidate, targetEv100).verdict === "correct") return candidate;
+      }
     }
   }
 
@@ -183,8 +231,13 @@ export function canReachCorrectExposure(
   settings: CameraSettings,
   unlocked: readonly ControlName[],
   targetEv100: number,
+  maxShutterSeconds?: number,
 ): boolean {
-  const shutters = unlocked.includes("shutter") ? SHUTTER_SPEEDS : [settings.shutterSeconds];
+  const allShutters =
+    maxShutterSeconds === undefined
+      ? SHUTTER_SPEEDS
+      : SHUTTER_SPEEDS.filter((seconds) => seconds <= maxShutterSeconds);
+  const shutters = unlocked.includes("shutter") ? allShutters : [settings.shutterSeconds];
   const apertures = unlocked.includes("aperture") ? APERTURES : [settings.aperture];
   const isos = unlocked.includes("iso") ? ISOS : [settings.iso];
 

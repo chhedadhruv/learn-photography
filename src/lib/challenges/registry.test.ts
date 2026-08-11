@@ -1,71 +1,66 @@
 import { describe, expect, it } from "vitest";
 import { evaluateExposure } from "@/lib/sim/exposure";
-import { canReachCorrectExposure, startingSettings, subjectEv100 } from "@/lib/sim/meter";
+import { subjectEv100 } from "@/lib/sim/meter";
 import { score } from "@/lib/sim/scoring";
-import { APERTURES, ISOS, SHUTTER_SPEEDS } from "@/lib/sim/values";
 import type { CameraSettings } from "@/lib/sim/types";
+import { APERTURES, ISOS, SHUTTER_SPEEDS } from "@/lib/sim/values";
 import { CHALLENGES, getSceneFor } from "./registry";
+import { setUpChallenge } from "./setup";
 
 /**
- * Properties every challenge must hold, checked for all of them at once.
+ * Properties every challenge must hold, checked across all of them at once.
  *
- * These are the two ways a challenge fails a player without anyone noticing: it can be
- * impossible, or it can already be solved when they arrive. Both would be found by a frustrated
- * or a bored beginner rather than by CI, so they are asserted here.
+ * These are the two ways a challenge fails a player silently: it can be impossible, or it can
+ * already be solved when they arrive. Both would be found by a frustrated or a bored beginner
+ * rather than by CI.
+ *
+ * Everything goes through `setUpChallenge`, the same function the simulator uses. A test that
+ * rebuilt the starting conditions itself would be verifying a fiction — and did, briefly, which
+ * is how five unwinnable challenges nearly got through.
  */
 describe.each(CHALLENGES.map((challenge) => [challenge.id, challenge] as const))(
   "challenge: %s",
   (_id, challenge) => {
-    const { scene, focalLengthMm } = getSceneFor(challenge);
-    const request = {
-      scene,
-      unlocked: challenge.unlocked,
-      focalLengthMm,
-      focusDistanceM: scene.subjectDistanceM,
-    };
+    const spec = getSceneFor(challenge);
+    const setup = setUpChallenge(challenge, spec);
 
     it("has a starting setup", () => {
-      expect(startingSettings(request, challenge.startOffsetStops)).not.toBeNull();
+      expect(setup).not.toBeNull();
     });
 
     it("does not open on the answer", () => {
-      const start = startingSettings(request, challenge.startOffsetStops);
-      expect(start).not.toBeNull();
-      if (!start) return;
+      if (!setup) return;
 
-      const opening = score({ settings: start, scene, goals: challenge.goals });
-
-      // Pressing capture without touching anything must not score full marks.
+      const opening = score({ settings: setup.start, scene: spec.scene, goals: challenge.goals });
       expect(opening.stars).toBeLessThan(3);
     });
 
     it("opens visibly wrong, so the meter shows which way to go", () => {
-      const start = startingSettings(request, challenge.startOffsetStops);
-      if (!start) return;
+      if (!setup) return;
 
-      const exposure = evaluateExposure(start, subjectEv100(scene));
+      const exposure = evaluateExposure(setup.start, subjectEv100(spec.scene));
       expect(Math.abs(exposure.deviationStops)).toBeGreaterThanOrEqual(1);
     });
 
-    it("is solvable: some setting of the unlocked controls scores three stars", () => {
-      const start = startingSettings(request, challenge.startOffsetStops);
-      if (!start) return;
+    it("is solvable: some reachable setting scores three stars", () => {
+      if (!setup) return;
 
-      // Sweep every combination the player can actually reach.
       const shutters = challenge.unlocked.includes("shutter")
         ? SHUTTER_SPEEDS
-        : [start.shutterSeconds];
-      const apertures = challenge.unlocked.includes("aperture") ? APERTURES : [start.aperture];
-      const isos = challenge.unlocked.includes("iso") ? ISOS : [start.iso];
+        : [setup.start.shutterSeconds];
+      const apertures = challenge.unlocked.includes("aperture")
+        ? APERTURES
+        : [setup.start.aperture];
+      const isos = challenge.unlocked.includes("iso") ? ISOS : [setup.start.iso];
 
       let best = 0;
       for (const shutterSeconds of shutters) {
         for (const aperture of apertures) {
           for (const iso of isos) {
-            const candidate: CameraSettings = { ...start, shutterSeconds, aperture, iso };
+            const candidate: CameraSettings = { ...setup.start, shutterSeconds, aperture, iso };
             best = Math.max(
               best,
-              score({ settings: candidate, scene, goals: challenge.goals }).stars,
+              score({ settings: candidate, scene: spec.scene, goals: challenge.goals }).stars,
             );
           }
         }
@@ -74,15 +69,55 @@ describe.each(CHALLENGES.map((challenge) => [challenge.id, challenge] as const))
       expect(best, "no reachable setting earns three stars").toBe(3);
     });
 
-    it("leaves the locked controls able to expose correctly", () => {
-      const start = startingSettings(request, challenge.startOffsetStops);
-      if (!start) return;
+    it("only moves the controls it unlocked", () => {
+      if (!setup) return;
 
-      expect(canReachCorrectExposure(start, challenge.unlocked, subjectEv100(scene))).toBe(true);
+      // Whatever the player cannot touch must open on the value the answer needs.
+      if (!challenge.unlocked.includes("shutter")) {
+        expect(setup.start.shutterSeconds).toBe(setup.answer.shutterSeconds);
+      }
+      if (!challenge.unlocked.includes("aperture")) {
+        expect(setup.start.aperture).toBe(setup.answer.aperture);
+      }
+      if (!challenge.unlocked.includes("iso")) {
+        expect(setup.start.iso).toBe(setup.answer.iso);
+      }
     });
 
-    it("only unlocks controls the player is told about", () => {
-      expect(challenge.unlocked.length).toBeGreaterThan(0);
+    it("honours any values the challenge pinned", () => {
+      if (!setup || !challenge.locked) return;
+
+      if (challenge.locked.shutterSeconds !== undefined) {
+        expect(setup.answer.shutterSeconds).toBeCloseTo(challenge.locked.shutterSeconds, 10);
+      }
+      if (challenge.locked.aperture !== undefined) {
+        expect(setup.answer.aperture).toBeCloseTo(challenge.locked.aperture, 10);
+      }
+      if (challenge.locked.iso !== undefined) {
+        expect(setup.answer.iso).toBe(challenge.locked.iso);
+      }
     });
   },
 );
+
+describe("the ladder as a whole", () => {
+  it("has three challenges at every level from 1 to 5", () => {
+    for (let level = 1; level <= 5; level += 1) {
+      expect(
+        CHALLENGES.filter((challenge) => challenge.level === level),
+        `level ${level.toString()}`,
+      ).toHaveLength(3);
+    }
+  });
+
+  it("unlocks one control at level 1 and all three by level 5", () => {
+    for (const challenge of CHALLENGES) {
+      const expected = challenge.level <= 3 ? 1 : challenge.level === 4 ? 2 : 3;
+      expect(challenge.unlocked, challenge.id).toHaveLength(expected);
+    }
+  });
+
+  it("gives every challenge a unique id", () => {
+    expect(new Set(CHALLENGES.map((c) => c.id)).size).toBe(CHALLENGES.length);
+  });
+});

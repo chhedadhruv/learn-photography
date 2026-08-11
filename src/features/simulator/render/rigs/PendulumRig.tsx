@@ -1,6 +1,6 @@
 import type { RefObject } from "react";
 import type { Group } from "three";
-import { PENDULUM_RIG } from "../scene/pendulum";
+import { PENDULUM_RIG, type PendulumRig as RigParams } from "../../scene/pendulum";
 
 /**
  * The rig, in 3D.
@@ -12,12 +12,17 @@ import { PENDULUM_RIG } from "../scene/pendulum";
 
 const RULE_COUNT = 21;
 
-export function PendulumRig({ armRef }: { readonly armRef: RefObject<Group | null> }) {
-  const { lengthM, bobRadiusM, bobDistanceM, backdropDistanceM, ruleSpacingM } = PENDULUM_RIG;
-  const rules = Array.from(
-    { length: RULE_COUNT },
-    (_, i) => (i - (RULE_COUNT - 1) / 2) * ruleSpacingM,
-  );
+export function PendulumRig({
+  armRef,
+  rig = PENDULUM_RIG,
+}: {
+  readonly armRef: RefObject<Group | null>;
+  /** Variants push the backdrop further back; the geometry follows the same numbers as the physics. */
+  readonly rig?: RigParams;
+}) {
+  const { lengthM, bobRadiusM, bobDistanceM, backdropDistanceM, ruleSpacingM } = rig;
+  const spacing = ruleSpacingM * (backdropDistanceM / 4.5);
+  const rules = Array.from({ length: RULE_COUNT }, (_, i) => (i - (RULE_COUNT - 1) / 2) * spacing);
 
   return (
     <>
@@ -26,13 +31,13 @@ export function PendulumRig({ armRef }: { readonly armRef: RefObject<Group | nul
 
       {/* Backdrop, set back from the subject so aperture has something to throw out of focus. */}
       <mesh position={[0, 0, -backdropDistanceM]}>
-        <planeGeometry args={[8, 5]} />
+        <planeGeometry args={[backdropDistanceM * 2.2, backdropDistanceM * 1.4]} />
         <meshStandardMaterial color="#d9d9d9" roughness={1} />
       </mesh>
 
       {rules.map((x) => (
         <mesh key={x} position={[x, 0, -backdropDistanceM + 0.01]}>
-          <planeGeometry args={[0.012, 4.6]} />
+          <planeGeometry args={[0.012 * (backdropDistanceM / 4.5), backdropDistanceM * 1.3]} />
           <meshStandardMaterial color="#3a3a3a" roughness={1} />
         </mesh>
       ))}
@@ -50,7 +55,7 @@ export function PendulumRig({ armRef }: { readonly armRef: RefObject<Group | nul
         </mesh>
       </group>
 
-      <mesh position={[0, PENDULUM_RIG.lengthM, -bobDistanceM]}>
+      <mesh position={[0, lengthM, -bobDistanceM]}>
         <boxGeometry args={[0.18, 0.05, 0.05]} />
         <meshStandardMaterial color="#4e4e4e" roughness={0.8} />
       </mesh>

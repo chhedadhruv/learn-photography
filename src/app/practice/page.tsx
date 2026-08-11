@@ -1,17 +1,18 @@
+import { LEVELS } from "@content/challenges";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Breadcrumbs } from "@/components/layout/Breadcrumbs";
-import { CHALLENGES } from "@/lib/challenges/registry";
+import { challengesForLevel } from "@/lib/challenges/registry";
 
 export const metadata: Metadata = {
   title: "Practice",
   description:
-    "Set the shutter, aperture and ISO yourself, take the shot, and get a critique of what your settings did.",
+    "Set the shutter, aperture and ISO yourself, take the shot, and get a critique of what your settings did. Fifteen challenges, one control at a time.",
 };
 
 /**
- * Placeholder hub. Phase 6 replaces this with the level ladder, XP and badges — for now it lists
- * what exists so the challenge route is reachable.
+ * The ladder. Phase 6 adds XP, stars and locking; for now every challenge is open, grouped by
+ * the control it teaches.
  */
 export default function PracticeIndexPage() {
   return (
@@ -29,21 +30,41 @@ export default function PracticeIndexPage() {
         settings actually did.
       </p>
 
-      <ul className="mt-10 flex flex-col">
-        {CHALLENGES.map((challenge) => (
-          <li key={challenge.id} className="border-b border-rule py-6">
-            <p className="text-xs text-ink-faint">Level {challenge.level}</p>
-            <h2 className="mt-1 text-xl font-semibold">
-              <Link href={`/practice/${challenge.id}`} className="hover:text-accent">
-                {challenge.title}
-              </Link>
-            </h2>
-            <p className="mt-2 max-w-2xl text-sm leading-relaxed text-ink-muted">
-              {challenge.brief}
-            </p>
-          </li>
-        ))}
-      </ul>
+      <div className="mt-12 flex flex-col gap-12">
+        {LEVELS.map((level) => {
+          const challenges = challengesForLevel(level.level);
+
+          return (
+            <section key={level.level} aria-labelledby={`level-${level.level.toString()}`}>
+              <div className="flex items-baseline gap-3">
+                <span className="text-xs font-semibold tracking-[0.1em] text-ink-faint uppercase">
+                  Level {level.level}
+                </span>
+                <h2 id={`level-${level.level.toString()}`} className="text-2xl font-semibold">
+                  {level.name}
+                </h2>
+              </div>
+              <p className="mt-1 text-sm text-ink-muted">{level.teaches}</p>
+
+              <ul className="mt-5 grid gap-3 sm:grid-cols-3">
+                {challenges.map((challenge) => (
+                  <li key={challenge.id}>
+                    <Link
+                      href={`/practice/${challenge.id}`}
+                      className="flex h-full flex-col rounded-md border border-rule p-4 transition-colors hover:border-rule-strong hover:bg-surface-raised"
+                    >
+                      <span className="font-semibold">{challenge.title}</span>
+                      <span className="mt-1.5 text-sm leading-relaxed text-ink-muted">
+                        {challenge.brief.split(".")[0]}.
+                      </span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          );
+        })}
+      </div>
     </div>
   );
 }

@@ -4,9 +4,9 @@ import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import type { CameraSettings } from "@/lib/sim/types";
-import { PENDULUM_RIG, angleAt } from "../scene/pendulum";
+import type { SceneSpec } from "../scene/types";
 import { AccumulationPipeline } from "./AccumulationPipeline";
-import { PendulumRig } from "./PendulumRig";
+import { getRig } from "./rigs";
 import { apertureDiameterM, buildSamples, grainAmount } from "./samples";
 
 export type ViewfinderMode = "live" | "capturing" | "captured";
@@ -17,6 +17,7 @@ const CAPTURE_SAMPLES = 48;
 const LIVE_SAMPLES = 6;
 
 interface RenderLoopProps {
+  readonly spec: SceneSpec;
   readonly settings: CameraSettings;
   readonly deviationStops: number;
   readonly mode: ViewfinderMode;
@@ -25,16 +26,25 @@ interface RenderLoopProps {
   readonly onCaptured: (captureTimeSeconds: number) => void;
 }
 
-function RenderLoop({ settings, deviationStops, mode, animate, onCaptured }: RenderLoopProps) {
+function RenderLoop({
+  spec,
+  settings,
+  deviationStops,
+  mode,
+  animate,
+  onCaptured,
+}: RenderLoopProps) {
   const { gl, scene, camera, size } = useThree();
   const armRef = useRef<THREE.Group>(null);
+  const rig = useMemo(() => getRig(spec.id), [spec.id]);
 
-  const focusTarget = useMemo(() => new THREE.Vector3(0, 0, -PENDULUM_RIG.bobDistanceM), []);
+  const focusTarget = useMemo(
+    () => new THREE.Vector3(0, 0, -spec.focusDistanceM),
+    [spec.focusDistanceM],
+  );
 
   // Built once and kept for the component's life; resizes go through setSize rather than
-  // rebuilding the GPU targets. A lazy useState initialiser is the sanctioned way to construct
-  // an expensive object once — a useMemo keyed on size would rebuild them on every resize, and
-  // reading a ref during render is not allowed.
+  // rebuilding the GPU targets.
   const [pipeline] = useState(() => new AccumulationPipeline(size.width, size.height));
 
   const state = useRef({ elapsed: 0, captureRequested: false, seed: 0 });
@@ -73,7 +83,7 @@ function RenderLoop({ settings, deviationStops, mode, animate, onCaptured }: Ren
       state.current.captureRequested = false;
 
       // The exposure is centred on the moment the button was pressed, not on a fixed point in
-      // the swing. Anything else makes the shutter button a formality.
+      // the scene's cycle. Anything else makes the shutter button a formality.
       const captureTime = state.current.elapsed;
 
       pipeline.render(gl, scene, camera, {
@@ -81,12 +91,10 @@ function RenderLoop({ settings, deviationStops, mode, animate, onCaptured }: Ren
           count: CAPTURE_SAMPLES,
           shutterSeconds: settings.shutterSeconds,
           apertureDiameterM: diameter,
-          includeMotion: true,
+          includeMotion: spec.animated,
         }),
         setSceneTime: (offset) => {
-          if (armRef.current) {
-            armRef.current.rotation.z = angleAt(PENDULUM_RIG, captureTime + offset);
-          }
+          rig.setTime(armRef, captureTime + offset);
         },
         gain,
         grain,
@@ -98,7 +106,7 @@ function RenderLoop({ settings, deviationStops, mode, animate, onCaptured }: Ren
       return;
     }
 
-    if (animate) state.current.elapsed += delta;
+    if (animate && spec.animated) state.current.elapsed += delta;
 
     pipeline.render(gl, scene, camera, {
       samples: buildSamples({
@@ -108,8 +116,7 @@ function RenderLoop({ settings, deviationStops, mode, animate, onCaptured }: Ren
         includeMotion: false,
       }),
       setSceneTime: () => {
-        if (armRef.current)
-          armRef.current.rotation.z = angleAt(PENDULUM_RIG, state.current.elapsed);
+        rig.setTime(armRef, state.current.elapsed);
       },
       gain,
       grain,
@@ -118,16 +125,13 @@ function RenderLoop({ settings, deviationStops, mode, animate, onCaptured }: Ren
     });
   }, 1);
 
-  return <PendulumRig armRef={armRef} />;
+  const Rig = rig.Component;
+  return <Rig armRef={armRef} />;
 }
 
-interface ViewfinderProps extends RenderLoopProps {
-  readonly focalLengthMm: number;
-}
-
-export function Viewfinder({ focalLengthMm, ...loop }: ViewfinderProps) {
+export function Viewfinder(props: RenderLoopProps) {
   // Vertical field of view for this focal length on full-frame: 2·atan(24 / 2f).
-  const fov = (2 * Math.atan(24 / (2 * focalLengthMm)) * 180) / Math.PI;
+  const fov = (2 * Math.atan(24 / (2 * props.settings.focalLengthMm)) * 180) / Math.PI;
 
   return (
     <Canvas
@@ -137,10 +141,9 @@ export function Viewfinder({ focalLengthMm, ...loop }: ViewfinderProps) {
       dpr={[1, 2]}
       gl={{ antialias: true, preserveDrawingBuffer: true }}
       camera={{ fov, position: [0, 0, 0], near: 0.1, far: 100 }}
-      // Rendering is driven entirely by the pipeline's useFrame callback.
       flat
     >
-      <RenderLoop {...loop} />
+      <RenderLoop {...props} />
     </Canvas>
   );
 }

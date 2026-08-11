@@ -1,4 +1,5 @@
 import { FULL_FRAME, type Scene } from "@/lib/sim/types";
+import type { SceneSpec } from "./types";
 
 /**
  * Kinematics for the pendulum rig, kept free of three.js so the motion the renderer draws and
@@ -115,21 +116,90 @@ export function speedFraction(rig: PendulumRig, shutterSeconds: number, centreSe
   return effectiveSpeedMps(rig, shutterSeconds, centreSeconds) / maxSpeedMps(rig);
 }
 
-/** The scene as the simulation core sees it: brightness, distances and speed. */
-export const PENDULUM_SCENE: Scene = {
-  id: "pendulum",
-  subjectDistanceM: PENDULUM_RIG.bobDistanceM,
-  backgroundDistanceM: PENDULUM_RIG.backdropDistanceM,
-  subjectSpeedMps: maxSpeedMps(PENDULUM_RIG),
-  imageWidthPx: 1000,
-  sensor: FULL_FRAME,
-  // Bright overcast daylight. Chosen so the shutter that exposes correctly at the automatic
-  // f/5.6 and ISO 100 is also fast enough to freeze the bob — the two lessons agree rather than
-  // fight, which is what a first level needs.
-  regions: [
-    { id: "bob", ev100: 14, frameShare: 0.2, inCentre: true, isSubject: true },
-    { id: "backdrop", ev100: 14, frameShare: 0.8, inCentre: false, isSubject: false },
-  ],
-};
+/**
+ * Builds a pendulum scene.
+ *
+ * Distances and brightness are parameters rather than constants so the same rig can teach
+ * shutter speed on its own and, with the backdrop pushed further away and a longer lens, the
+ * trade-off between shutter and aperture. Both halves — the physics here and the geometry the
+ * rig draws — read the same numbers, so a variant cannot drift out of sync with its picture.
+ */
+export interface PendulumSceneOptions {
+  readonly id: string;
+  readonly ev100: number;
+  readonly focalLengthMm: number;
+  readonly rig?: PendulumRig;
+}
 
-export const PENDULUM_FOCAL_LENGTH_MM = 50;
+export function createPendulumScene(options: PendulumSceneOptions): SceneSpec {
+  const rig = options.rig ?? PENDULUM_RIG;
+
+  const scene: Scene = {
+    id: options.id,
+    subjectDistanceM: rig.bobDistanceM,
+    backgroundDistanceM: rig.backdropDistanceM,
+    // A placeholder: the real figure depends on where in the swing the shutter fired, and is
+    // substituted at capture time from `effectiveSpeedMps`.
+    subjectSpeedMps: maxSpeedMps(rig),
+    imageWidthPx: 1000,
+    sensor: FULL_FRAME,
+    regions: [
+      { id: "bob", ev100: options.ev100, frameShare: 0.2, inCentre: true, isSubject: true },
+      {
+        id: "backdrop",
+        ev100: options.ev100,
+        frameShare: 0.8,
+        inCentre: false,
+        isSubject: false,
+      },
+    ],
+  };
+
+  return {
+    id: options.id,
+    scene,
+    focalLengthMm: options.focalLengthMm,
+    focusDistanceM: rig.bobDistanceM,
+    animated: true,
+    effectiveSpeedMps: (shutterSeconds, centreSeconds) =>
+      effectiveSpeedMps(rig, shutterSeconds, centreSeconds),
+    speedFraction: (shutterSeconds, centreSeconds) =>
+      speedFraction(rig, shutterSeconds, centreSeconds),
+  };
+}
+
+/**
+ * Bright daylight, 50mm. Chosen so the shutter that exposes correctly at the automatic f/5.6 and
+ * ISO 100 is also fast enough to freeze the bob — the two lessons agree rather than fight, which
+ * is what a first level needs.
+ */
+export const PENDULUM = createPendulumScene({
+  id: "pendulum",
+  ev100: 14,
+  focalLengthMm: 50,
+});
+
+/**
+ * The backdrop pushed back to 12m and an 85mm lens, so aperture has something to throw out of
+ * focus while the bob still needs a fast shutter. This is the scene where the two controls
+ * genuinely compete.
+ */
+export const PENDULUM_DEEP = createPendulumScene({
+  id: "pendulum-deep",
+  ev100: 13,
+  focalLengthMm: 85,
+  rig: { ...PENDULUM_RIG, backdropDistanceM: 12 },
+});
+
+/**
+ * Failing light, 50mm.
+ *
+ * A shutter-only challenge that asks for visible movement needs the *correct* exposure to fall
+ * on a slow shutter — in daylight the right answer is 1/500 and the bob is frozen whatever the
+ * player intends. Three stops darker, the right answer is 1/16s and the smear comes for free.
+ */
+export const PENDULUM_DUSK = createPendulumScene({
+  id: "pendulum-dusk",
+  ev100: 9,
+  focalLengthMm: 50,
+});
