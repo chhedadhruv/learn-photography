@@ -128,6 +128,11 @@ export class AccumulationPipeline {
   };
 
   private sampleTarget: THREE.WebGLRenderTarget;
+  /** Small, 8-bit, and separate from the display path so a readback never disturbs the canvas. */
+  private readonly readbackTarget = new THREE.WebGLRenderTarget(160, 107, {
+    type: THREE.UnsignedByteType,
+    depthBuffer: false,
+  });
   private accumulators: [THREE.WebGLRenderTarget, THREE.WebGLRenderTarget];
   private front = 0;
 
@@ -250,8 +255,43 @@ export class AccumulationPipeline {
     renderer.render(this.quadScene, this.quadCamera);
   }
 
+  /**
+   * Renders the finished photograph into a small buffer and reads it back, for the histogram.
+   *
+   * Deliberately tiny: a histogram is a distribution, and a downsample of a few thousand pixels
+   * describes it as faithfully as the full frame while costing a fraction of the readback, which
+   * stalls the GPU pipeline whatever its size.
+   */
+  readPixels(
+    renderer: THREE.WebGLRenderer,
+    gain: number,
+    grain: number,
+    noiseSeed: number,
+  ): Uint8Array | null {
+    const finished = this.accumulators[this.front];
+    if (!finished) return null;
+
+    this.outputUniforms.tMap.value = finished.texture;
+    this.outputUniforms.uGain.value = gain;
+    this.outputUniforms.uGrain.value = grain;
+    this.outputUniforms.uSeed.value = noiseSeed;
+    this.quad.material = this.outputMaterial;
+
+    const previousTarget = renderer.getRenderTarget();
+    renderer.setRenderTarget(this.readbackTarget);
+    renderer.render(this.quadScene, this.quadCamera);
+
+    const { width, height } = this.readbackTarget;
+    const pixels = new Uint8Array(width * height * 4);
+    renderer.readRenderTargetPixels(this.readbackTarget, 0, 0, width, height, pixels);
+
+    renderer.setRenderTarget(previousTarget);
+    return pixels;
+  }
+
   dispose(): void {
     this.sampleTarget.dispose();
+    this.readbackTarget.dispose();
     this.accumulators[0].dispose();
     this.accumulators[1].dispose();
     this.blendMaterial.dispose();
