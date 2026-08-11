@@ -75,10 +75,16 @@ export function DiagnoseTheMistake({ exercise }: { readonly exercise: DiagnoseEx
   return (
     <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
       <div className="min-w-0 flex-1">
-        <div className="rounded-md bg-[var(--color-zone-5)] p-4 sm:p-6">
-          {/* One canvas. It renders the flawed shot once, then becomes the live view used for
-              the fix — so the "before" is a still and the "after" is something you control. */}
-          <div className={stage === "diagnosing" ? "hidden" : undefined}>
+        <div className="relative rounded-md bg-[var(--color-zone-5)] p-4 sm:p-6">
+          {/* One canvas. It renders the flawed shot once, then becomes the live view used for the
+              fix — so the "before" is a still and the "after" is something you control.
+
+              It must stay laid out even while the still is on top of it. Hiding it with
+              `display: none` gives the canvas zero size, so it never renders, so the still it is
+              supposed to produce never arrives — and the placeholder waits forever on itself.
+              Covering it with an overlay keeps it measurable; `animate` is off underneath, so
+              nothing is being drawn for no reason. */}
+          <div data-testid="viewfinder-slot">
             <Viewfinder
               spec={spec}
               settings={settings}
@@ -93,21 +99,24 @@ export function DiagnoseTheMistake({ exercise }: { readonly exercise: DiagnoseEx
             />
           </div>
 
-          {stage === "diagnosing" &&
-            (flawedImage ? (
-              <Image
-                src={flawedImage}
-                alt="A photograph with something wrong with it. Work out what."
-                width={900}
-                height={600}
-                unoptimized
-                className="h-auto w-full rounded"
-              />
-            ) : (
-              <div style={{ aspectRatio: "3 / 2" }} className="grid place-items-center">
-                <span className="text-sm text-white/80">Developing…</span>
-              </div>
-            ))}
+          {stage === "diagnosing" && (
+            <div className="absolute inset-0 p-4 sm:p-6">
+              {flawedImage ? (
+                <Image
+                  src={flawedImage}
+                  alt="A photograph with something wrong with it. Work out what."
+                  width={900}
+                  height={600}
+                  unoptimized
+                  className="h-auto w-full rounded"
+                />
+              ) : (
+                <div className="grid h-full place-items-center">
+                  <span className="text-sm text-white/80">Developing…</span>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* The flawed image is invisible to assistive tech, so the fault is also available as
