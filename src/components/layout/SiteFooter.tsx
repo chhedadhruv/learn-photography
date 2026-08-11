@@ -4,9 +4,9 @@ import { PRIMARY_NAV, SITE } from "@/lib/site";
 
 const SECONDARY_LINKS = [
   { href: "/start-here", label: "Start here" },
-  { href: "/tips", label: "Tips" },
+  { href: "/practice/sandbox", label: "Sandbox" },
   { href: "/faq", label: "FAQ" },
-  { href: "/about", label: "About" },
+  { href: "/search", label: "Search" },
 ] as const;
 
 export function SiteFooter() {

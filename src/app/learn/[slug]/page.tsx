@@ -19,6 +19,9 @@ import {
   getRelatedLessons,
 } from "@/lib/content/loader";
 import { MdxContent } from "@/lib/content/mdx";
+import { JsonLd } from "@/components/seo/JsonLd";
+import { articleJsonLd, breadcrumbJsonLd, faqJsonLd, howToJsonLd } from "@/lib/jsonld";
+import { buildMetadata } from "@/lib/seo";
 
 /**
  * Flat URLs put lessons and category indexes in the same namespace, so this route resolves
@@ -39,16 +42,24 @@ export async function generateMetadata({ params }: PageProps<"/learn/[slug]">): 
 
   const category = getCategory(slug);
   if (category) {
-    return { title: category.name, description: category.blurb };
+    return buildMetadata({
+      title: category.name,
+      description: category.blurb,
+      path: `/learn/${category.slug}`,
+    });
   }
 
   const lesson = await getLesson(slug);
   if (!lesson) return {};
 
-  return {
+  return buildMetadata({
     title: lesson.frontmatter.title,
     description: lesson.frontmatter.description,
-  };
+    path: `/learn/${lesson.slug}`,
+    type: "article",
+    publishedAt: lesson.frontmatter.publishedAt,
+    updatedAt: lesson.frontmatter.updatedAt,
+  });
 }
 
 export default async function LearnSlugPage({ params }: PageProps<"/learn/[slug]">) {
@@ -63,19 +74,45 @@ export default async function LearnSlugPage({ params }: PageProps<"/learn/[slug]
   const category = getCategory(lesson.frontmatter.category);
   const { frontmatter } = lesson;
 
+  const crumbs = [
+    { href: "/", label: "Home" },
+    { href: "/learn", label: "Lessons" },
+    ...(category ? [{ href: `/learn/${category.slug}`, label: category.name }] : []),
+    { href: `/learn/${lesson.slug}`, label: frontmatter.title },
+  ];
+
+  const meta = {
+    title: frontmatter.title,
+    description: frontmatter.description,
+    path: `/learn/${lesson.slug}`,
+    publishedAt: frontmatter.publishedAt,
+    updatedAt: frontmatter.updatedAt,
+  };
+
   return (
     <>
       <ReadingProgress />
 
       <article className="mx-auto max-w-5xl px-4 py-12 sm:px-6">
-        <Breadcrumbs
-          crumbs={[
-            { href: "/", label: "Home" },
-            { href: "/learn", label: "Lessons" },
-            ...(category ? [{ href: `/learn/${category.slug}`, label: category.name }] : []),
-            { href: `/learn/${lesson.slug}`, label: frontmatter.title },
-          ]}
-        />
+        <JsonLd data={breadcrumbJsonLd(crumbs)} />
+        {/* HowTo takes its steps from the lesson's own headings, and the FAQ markup from the
+            same frontmatter the accordion renders — so neither can describe something absent
+            from the page. */}
+        {frontmatter.howTo ? (
+          <JsonLd
+            data={howToJsonLd(
+              meta,
+              lesson.headings
+                .filter((heading) => heading.depth === 2)
+                .map((heading) => ({ text: heading.text, id: heading.id })),
+            )}
+          />
+        ) : (
+          <JsonLd data={articleJsonLd(meta)} />
+        )}
+        {frontmatter.faqs.length > 0 && <JsonLd data={faqJsonLd(frontmatter.faqs)} />}
+
+        <Breadcrumbs crumbs={crumbs} />
 
         <header className="mt-6">
           <h1 className="max-w-3xl text-4xl leading-[1.15] font-semibold">{frontmatter.title}</h1>

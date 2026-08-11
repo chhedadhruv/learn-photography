@@ -7,7 +7,9 @@ import remarkGfm from "remark-gfm";
 import remarkSmartypants from "remark-smartypants";
 import { Callout } from "@/components/mdx/Callout";
 import { Figure } from "@/components/mdx/Figure";
+import { GlossaryLink } from "@/components/mdx/GlossaryLink";
 import { KeyTakeaways } from "@/components/mdx/KeyTakeaways";
+import { LessonSimulator } from "@/components/mdx/LessonSimulator";
 
 /**
  * Links written as plain markdown still need to behave correctly: internal ones go through
@@ -63,7 +65,9 @@ const components = {
   img: RejectBareImage,
   Callout,
   Figure,
+  GlossaryLink,
   KeyTakeaways,
+  Simulator: LessonSimulator,
 };
 
 /**
