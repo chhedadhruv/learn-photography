@@ -1,6 +1,6 @@
 import { handheldShakePx, subjectBlurPx } from "./motion";
 import { evaluateExposure } from "./exposure";
-import { subjectEv100 } from "./meter";
+import { correctExposureEv100 } from "./meter";
 import { backgroundBlurPx } from "./optics";
 import type { CameraSettings, Scene } from "./types";
 
@@ -73,7 +73,7 @@ export function getFault(id: string) {
 export function faultsPresent(settings: CameraSettings, scene: Scene): readonly FaultId[] {
   const present: FaultId[] = [];
 
-  const exposure = evaluateExposure(settings, subjectEv100(scene));
+  const exposure = evaluateExposure(settings, correctExposureEv100(scene));
   if (exposure.deviationStops <= -1.5) present.push("underexposed");
   if (exposure.deviationStops >= 1.5) present.push("overexposed");
 

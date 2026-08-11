@@ -1,6 +1,7 @@
 import { LEVELS } from "@content/challenges";
 import { DIAGNOSE_EXERCISES } from "@content/challenges/diagnose";
 import { MATCH_EXERCISES } from "@content/challenges/match";
+import { METERING_EXERCISES } from "@content/challenges/metering";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { Breadcrumbs } from "@/components/layout/Breadcrumbs";
@@ -75,6 +76,18 @@ export default function PracticeIndexPage() {
                 className="flex h-full flex-col rounded-md border border-rule p-4 transition-colors hover:border-rule-strong hover:bg-surface-raised"
               >
                 <span className="text-xs text-ink-faint">Match the photo</span>
+                <span className="mt-0.5 font-semibold">{exercise.title}</span>
+              </Link>
+            </li>
+          ))}
+
+          {METERING_EXERCISES.map((exercise) => (
+            <li key={exercise.id}>
+              <Link
+                href={`/practice/metering/${exercise.id}`}
+                className="flex h-full flex-col rounded-md border border-rule p-4 transition-colors hover:border-rule-strong hover:bg-surface-raised"
+              >
+                <span className="text-xs text-ink-faint">Metering</span>
                 <span className="mt-0.5 font-semibold">{exercise.title}</span>
               </Link>
             </li>

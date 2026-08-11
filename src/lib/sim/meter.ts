@@ -54,6 +54,20 @@ export function subjectEv100(scene: Scene): number {
   return first?.ev100 ?? 12;
 }
 
+/**
+ * The brightness a correct exposure should be judged against.
+ *
+ * Usually the subject's own luminance — expose for that and it renders as a mid-tone. Where a
+ * subject should not be a mid-tone, its offset moves the target: rendering snow two stops
+ * brighter means exposing two stops more, so the target sits two stops below its luminance.
+ */
+export function correctExposureEv100(scene: Scene): number {
+  const subject = scene.regions.find((region) => region.isSubject);
+  if (!subject) return subjectEv100(scene);
+
+  return subject.ev100 - (subject.rendersStopsAboveMidGrey ?? 0);
+}
+
 export type ControlName = "shutter" | "aperture" | "iso";
 
 /**

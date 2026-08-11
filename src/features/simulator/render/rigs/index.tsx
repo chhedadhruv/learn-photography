@@ -3,6 +3,7 @@ import type { Group } from "three";
 import { PENDULUM_RIG, angleAt } from "../../scene/pendulum";
 import { DepthRowRig } from "./DepthRowRig";
 import { DimInteriorRig } from "./DimInteriorRig";
+import { BacklitPortraitRig, SnowFieldRig } from "./MeteringRigs";
 import { PendulumRig } from "./PendulumRig";
 
 /**
@@ -46,6 +47,8 @@ const RIGS: Readonly<Record<string, RigEntry>> = {
   "depth-row-overcast": { Component: DepthRowRig, setTime: stillLife },
   "dim-interior": { Component: DimInteriorRig, setTime: stillLife },
   "dim-interior-evening": { Component: DimInteriorRig, setTime: stillLife },
+  "backlit-portrait": { Component: BacklitPortraitRig, setTime: stillLife },
+  "snow-field": { Component: SnowFieldRig, setTime: stillLife },
 };
 
 export function getRig(sceneId: string): RigEntry {

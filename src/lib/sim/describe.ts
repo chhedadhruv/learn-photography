@@ -1,5 +1,5 @@
 import { describeExposure, evaluateExposure } from "./exposure";
-import { subjectEv100 } from "./meter";
+import { correctExposureEv100 } from "./meter";
 import { subjectBlurPx } from "./motion";
 import { backgroundBlurPx } from "./optics";
 import type { CameraSettings, Scene } from "./types";
@@ -37,7 +37,7 @@ export function describePhotograph(
 ): string {
   const sentences: string[] = [];
 
-  const exposure = evaluateExposure(settings, subjectEv100(scene));
+  const exposure = evaluateExposure(settings, correctExposureEv100(scene));
   sentences.push(
     exposure.verdict === "correct"
       ? "Correctly exposed."

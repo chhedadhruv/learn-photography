@@ -4,7 +4,7 @@ import Image from "next/image";
 import { useCallback, useMemo, useState } from "react";
 import { evaluateExposure } from "@/lib/sim/exposure";
 import { compareToTarget, type MatchResult } from "@/lib/sim/match";
-import { subjectEv100, type ControlName } from "@/lib/sim/meter";
+import { correctExposureEv100, type ControlName } from "@/lib/sim/meter";
 import type { CameraSettings } from "@/lib/sim/types";
 import { usePrefersReducedMotion } from "@/lib/usePrefersReducedMotion";
 import { Controls } from "./Controls";
@@ -72,8 +72,8 @@ export function MatchThePhoto({ exercise }: { readonly exercise: MatchExercise }
 
   if (!spec) return null;
 
-  const exposure = evaluateExposure(settings, subjectEv100(spec.scene));
-  const targetExposure = evaluateExposure(targetSettings, subjectEv100(spec.scene));
+  const exposure = evaluateExposure(settings, correctExposureEv100(spec.scene));
+  const targetExposure = evaluateExposure(targetSettings, correctExposureEv100(spec.scene));
 
   // Rendered once. `id` never changes, so the viewfinder produces it on the first frame and
   // returns to live view immediately afterwards.

@@ -1,4 +1,5 @@
 import { DEPTH_ROW, DEPTH_ROW_OVERCAST } from "./depthRow";
+import { BACKLIT_PORTRAIT, SNOW_FIELD } from "./metering";
 import { DIM_INTERIOR, DIM_INTERIOR_EVENING } from "./dimInterior";
 import { PENDULUM, PENDULUM_DEEP, PENDULUM_DUSK } from "./pendulum";
 import type { SceneSpec } from "./types";
@@ -17,6 +18,8 @@ export const SCENE_SPECS: readonly SceneSpec[] = [
   DEPTH_ROW_OVERCAST,
   DIM_INTERIOR,
   DIM_INTERIOR_EVENING,
+  BACKLIT_PORTRAIT,
+  SNOW_FIELD,
 ];
 
 const BY_ID = new Map(SCENE_SPECS.map((spec) => [spec.id, spec]));

@@ -56,6 +56,15 @@ export interface SceneRegion {
    * wrong to everyone else, which is precisely the lesson.
    */
   readonly isSubject: boolean;
+  /**
+   * How far above mid-grey this region *should* render, in stops.
+   *
+   * A meter assumes everything averages to 18% grey, which is right for most scenes and badly
+   * wrong for a few. Snow is not mid-grey — it is snow — so a correct exposure puts it about two
+   * stops brighter, and a camera left to itself renders it as dishwater. Zero for anything that
+   * genuinely is a mid-tone.
+   */
+  readonly rendersStopsAboveMidGrey?: number;
 }
 
 export interface Scene {

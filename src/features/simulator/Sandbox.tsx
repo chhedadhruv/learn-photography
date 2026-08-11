@@ -3,7 +3,7 @@
 import { useCallback, useState } from "react";
 import { describePhotograph } from "@/lib/sim/describe";
 import { evaluateExposure } from "@/lib/sim/exposure";
-import { subjectEv100, type ControlName } from "@/lib/sim/meter";
+import { correctExposureEv100, type ControlName } from "@/lib/sim/meter";
 import { buildHistogram, EMPTY_HISTOGRAM, type Histogram } from "@/lib/sim/histogram";
 import type { CameraSettings } from "@/lib/sim/types";
 import { usePrefersReducedMotion } from "@/lib/usePrefersReducedMotion";
@@ -68,7 +68,7 @@ export function Sandbox({ initialSceneId }: { readonly initialSceneId: string })
 
   if (!spec) return null;
 
-  const exposure = evaluateExposure(settings, subjectEv100(spec.scene));
+  const exposure = evaluateExposure(settings, correctExposureEv100(spec.scene));
 
   return (
     <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
@@ -158,4 +158,6 @@ const SCENE_LABELS: Readonly<Record<string, string>> = {
   "depth-row-overcast": "Depth row · overcast",
   "dim-interior": "Still life · window light",
   "dim-interior-evening": "Still life · evening",
+  "backlit-portrait": "Backlit figure · bright sky",
+  "snow-field": "Snow field · flat light",
 };
