@@ -1,4 +1,7 @@
 import { LEVELS } from "@content/challenges";
+import { DIAGNOSE_EXERCISES } from "@content/challenges/diagnose";
+import { MATCH_EXERCISES } from "@content/challenges/match";
+import Link from "next/link";
 import type { Metadata } from "next";
 import { Breadcrumbs } from "@/components/layout/Breadcrumbs";
 import { PracticeLadder } from "@/components/practice/PracticeLadder";
@@ -42,6 +45,54 @@ export default function PracticeIndexPage() {
       <div className="mt-12">
         <PracticeLadder levels={LEVELS} challengesByLevel={challengesByLevel} />
       </div>
+
+      <section aria-labelledby="other-ways" className="mt-16">
+        <h2 id="other-ways" className="text-2xl font-semibold">
+          Other ways to practise
+        </h2>
+        <p className="mt-1 text-sm text-ink-muted">
+          Not graded against a ladder — these are for poking at, and for reading photographs rather
+          than making them.
+        </p>
+
+        <ul className="mt-5 grid gap-3 sm:grid-cols-3">
+          <li>
+            <Link
+              href="/practice/sandbox"
+              className="flex h-full flex-col rounded-md border border-rule p-4 transition-colors hover:border-rule-strong hover:bg-surface-raised"
+            >
+              <span className="font-semibold">Sandbox</span>
+              <span className="mt-1.5 text-sm leading-relaxed text-ink-muted">
+                Every control, seven scenes, a live histogram, and nothing keeping score.
+              </span>
+            </Link>
+          </li>
+
+          {MATCH_EXERCISES.map((exercise) => (
+            <li key={exercise.id}>
+              <Link
+                href={`/practice/match/${exercise.id}`}
+                className="flex h-full flex-col rounded-md border border-rule p-4 transition-colors hover:border-rule-strong hover:bg-surface-raised"
+              >
+                <span className="text-xs text-ink-faint">Match the photo</span>
+                <span className="mt-0.5 font-semibold">{exercise.title}</span>
+              </Link>
+            </li>
+          ))}
+
+          {DIAGNOSE_EXERCISES.map((exercise) => (
+            <li key={exercise.id}>
+              <Link
+                href={`/practice/diagnose/${exercise.id}`}
+                className="flex h-full flex-col rounded-md border border-rule p-4 transition-colors hover:border-rule-strong hover:bg-surface-raised"
+              >
+                <span className="text-xs text-ink-faint">Diagnose the mistake</span>
+                <span className="mt-0.5 font-semibold">{exercise.title}</span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </section>
     </div>
   );
 }
