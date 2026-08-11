@@ -21,7 +21,8 @@ interface RenderLoopProps {
   readonly deviationStops: number;
   readonly mode: ViewfinderMode;
   readonly animate: boolean;
-  readonly onCaptured: () => void;
+  /** Reports the instant the exposure was centred on, so grading follows the same moment. */
+  readonly onCaptured: (captureTimeSeconds: number) => void;
 }
 
 function RenderLoop({ settings, deviationStops, mode, animate, onCaptured }: RenderLoopProps) {
@@ -71,9 +72,11 @@ function RenderLoop({ settings, deviationStops, mode, animate, onCaptured }: Ren
     if (state.current.captureRequested) {
       state.current.captureRequested = false;
 
+      // The exposure is centred on the moment the button was pressed, not on a fixed point in
+      // the swing. Anything else makes the shutter button a formality.
+      const captureTime = state.current.elapsed;
+
       pipeline.render(gl, scene, camera, {
-        // Capture is centred on the bottom of the swing, where the pendulum's speed matches the
-        // constant-speed figure the rubric grades against.
         samples: buildSamples({
           count: CAPTURE_SAMPLES,
           shutterSeconds: settings.shutterSeconds,
@@ -81,7 +84,9 @@ function RenderLoop({ settings, deviationStops, mode, animate, onCaptured }: Ren
           includeMotion: true,
         }),
         setSceneTime: (offset) => {
-          if (armRef.current) armRef.current.rotation.z = angleAt(PENDULUM_RIG, offset);
+          if (armRef.current) {
+            armRef.current.rotation.z = angleAt(PENDULUM_RIG, captureTime + offset);
+          }
         },
         gain,
         grain,
@@ -89,7 +94,7 @@ function RenderLoop({ settings, deviationStops, mode, animate, onCaptured }: Ren
         focusTarget,
       });
 
-      onCaptured();
+      onCaptured(captureTime);
       return;
     }
 

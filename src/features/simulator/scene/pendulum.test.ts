@@ -7,9 +7,12 @@ import {
   PENDULUM_RIG,
   PENDULUM_SCENE,
   angleAt,
+  effectiveSpeedMps,
   horizontalOffsetM,
+  instantaneousSpeedMps,
   maxSpeedMps,
   periodSeconds,
+  speedFraction,
   travelDuringExposureM,
 } from "./pendulum";
 
@@ -40,28 +43,70 @@ describe("pendulum kinematics", () => {
 });
 
 /**
- * The architectural promise is that the rubric grades the same motion the renderer draws. The
- * rubric assumes constant speed; the renderer follows the real arc. This measures the gap
- * instead of trusting it, across every shutter speed a shutter-only challenge can offer.
+ * The architectural promise: the rubric grades the same motion the renderer draws.
+ *
+ * The rubric takes a constant speed; the renderer follows the real arc. `effectiveSpeedMps`
+ * reconciles them exactly rather than approximately — it is defined as the displacement actually
+ * covered divided by the exposure time, so it reproduces the rendered smear by construction, at
+ * any point in the swing.
  */
-describe("constant-speed model against the true arc", () => {
-  const relevantShutters = SHUTTER_SPEEDS.filter((seconds) => seconds <= 1 / 4);
+describe("effective speed reproduces the rendered smear exactly", () => {
+  const quarterPeriod = periodSeconds(PENDULUM_RIG) / 4;
+  const moments = [0, quarterPeriod / 2, quarterPeriod, quarterPeriod * 1.5, quarterPeriod * 2];
 
-  for (const shutterSeconds of relevantShutters) {
-    it(`is within 3% at ${(1 / shutterSeconds).toFixed(0)}th of a second`, () => {
-      const trueTravel = travelDuringExposureM(PENDULUM_RIG, shutterSeconds);
-      const assumedTravel = maxSpeedMps(PENDULUM_RIG) * shutterSeconds;
+  for (const centre of moments) {
+    for (const shutterSeconds of SHUTTER_SPEEDS.filter((v) => v <= 1 / 4)) {
+      it(`matches at t=${centre.toFixed(2)}s, ${(1 / shutterSeconds).toFixed(0)}th`, () => {
+        const speed = effectiveSpeedMps(PENDULUM_RIG, shutterSeconds, centre);
+        const rendered = travelDuringExposureM(PENDULUM_RIG, shutterSeconds, centre);
 
-      const error = Math.abs(trueTravel - assumedTravel) / assumedTravel;
-      expect(error).toBeLessThan(0.03);
-    });
+        expect(speed * shutterSeconds).toBeCloseTo(rendered, 12);
+      });
+    }
   }
 
-  it("is near-exact at the fast end, where freeze-motion challenges are decided", () => {
-    const trueTravel = travelDuringExposureM(PENDULUM_RIG, s(500));
-    const assumedTravel = maxSpeedMps(PENDULUM_RIG) * s(500);
+  it("never exceeds the pendulum's peak speed", () => {
+    for (const centre of moments) {
+      expect(effectiveSpeedMps(PENDULUM_RIG, s(60), centre)).toBeLessThanOrEqual(
+        maxSpeedMps(PENDULUM_RIG) * 1.000001,
+      );
+    }
+  });
 
-    expect(Math.abs(trueTravel - assumedTravel) / assumedTravel).toBeLessThan(0.0001);
+  it("is near zero at the turning point, where the bob is momentarily still", () => {
+    const turningPoint = periodSeconds(PENDULUM_RIG) / 4;
+
+    expect(effectiveSpeedMps(PENDULUM_RIG, s(500), turningPoint)).toBeLessThan(
+      maxSpeedMps(PENDULUM_RIG) * 0.02,
+    );
+  });
+
+  it("is at its maximum through the centre of the swing", () => {
+    expect(effectiveSpeedMps(PENDULUM_RIG, s(500), 0)).toBeCloseTo(maxSpeedMps(PENDULUM_RIG), 3);
+  });
+});
+
+describe("instantaneousSpeedMps", () => {
+  it("peaks at the bottom of the swing", () => {
+    expect(instantaneousSpeedMps(PENDULUM_RIG, 0)).toBeCloseTo(maxSpeedMps(PENDULUM_RIG), 6);
+  });
+
+  it("falls to zero at the turning point", () => {
+    expect(instantaneousSpeedMps(PENDULUM_RIG, periodSeconds(PENDULUM_RIG) / 4)).toBeCloseTo(0, 6);
+  });
+});
+
+describe("speedFraction", () => {
+  it("is 1 through the centre and near 0 at the turn", () => {
+    expect(speedFraction(PENDULUM_RIG, s(500), 0)).toBeCloseTo(1, 2);
+    expect(speedFraction(PENDULUM_RIG, s(500), periodSeconds(PENDULUM_RIG) / 4)).toBeLessThan(0.05);
+  });
+
+  it("is what tells a well-timed shot from a fast shutter", () => {
+    // Below 0.4 the critique explains that timing, not shutter speed, froze the shot.
+    const nearTurn = periodSeconds(PENDULUM_RIG) * 0.22;
+    expect(speedFraction(PENDULUM_RIG, s(250), nearTurn)).toBeLessThan(0.4);
+    expect(speedFraction(PENDULUM_RIG, s(250), 0)).toBeGreaterThan(0.4);
   });
 });
 

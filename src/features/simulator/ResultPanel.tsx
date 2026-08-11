@@ -12,11 +12,14 @@ import type { ScoreResult } from "@/lib/sim/scoring";
 export function ResultPanel({
   result,
   description,
+  note,
   onRetake,
 }: {
   readonly result: ScoreResult;
   /** Plain-language account of the photograph, for readers who cannot see the canvas. */
   readonly description: string;
+  /** Optional coaching about *how* the result was achieved, not just whether it passed. */
+  readonly note?: string | undefined;
   readonly onRetake: () => void;
 }) {
   return (
@@ -37,6 +40,12 @@ export function ResultPanel({
       </div>
 
       <p className="mt-3 text-sm leading-relaxed text-ink-muted">{description}</p>
+
+      {note === undefined ? null : (
+        <p className="mt-3 border-l-2 border-l-[var(--color-tungsten)] pl-3 text-sm leading-relaxed text-ink-muted">
+          {note}
+        </p>
+      )}
 
       <ul className="mt-4 flex flex-col gap-3">
         {result.goals.map((goal) => (
