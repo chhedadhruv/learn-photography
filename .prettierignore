@@ -1,0 +1,9 @@
+node_modules
+.next
+out
+build
+coverage
+yarn.lock
+next-env.d.ts
+public/search-index.json
+AGENTS.md

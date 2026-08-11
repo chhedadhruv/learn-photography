@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# A new push to a branch cancels the previous run for that branch.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Format, lint, types, tests, build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: yarn
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      # Run as discrete steps rather than `yarn check` so a failure is attributable at a glance
+      # in the GitHub UI, and so every check still runs when an earlier one fails.
+      - name: Formatting
+        run: yarn format:check
+
+      - name: Lint
+        run: yarn lint
+        if: "!cancelled()"
+
+      - name: Types
+        run: yarn typecheck
+        if: "!cancelled()"
+
+      - name: Tests
+        run: yarn test
+        if: "!cancelled()"
+
+      - name: Build
+        run: yarn build
+        if: "!cancelled()"
