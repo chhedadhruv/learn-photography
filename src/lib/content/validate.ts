@@ -8,6 +8,39 @@ import type { DraftLessonFrontmatter, Lesson, LessonFrontmatter } from "./schema
 
 const basename = (filePath: string) => filePath.split("/").pop() ?? filePath;
 
+/** Matches `<GlossaryLink term="…" />` wherever it appears in a body. */
+const GLOSSARY_REFERENCE = /<GlossaryLink\s+term="([^"]+)"/g;
+
+export function glossaryReferencesIn(body: string): readonly string[] {
+  return [...body.matchAll(GLOSSARY_REFERENCE)]
+    .map((match) => match[1])
+    .filter((term): term is string => term !== undefined);
+}
+
+/**
+ * Every glossary term a body links to must exist.
+ *
+ * Checked when content loads rather than when a page renders, so a mistyped term fails the build
+ * with a filename instead of shipping a link that 404s. The glossary is the safety net for
+ * jargon; a broken one is worse than none, because a reader who follows it and lands nowhere
+ * stops trusting the rest.
+ */
+export function assertGlossaryReferencesResolve(
+  documents: readonly { readonly filePath: string; readonly body: string }[],
+  knownTerms: ReadonlySet<string>,
+): void {
+  for (const document of documents) {
+    for (const term of glossaryReferencesIn(document.body)) {
+      if (!knownTerms.has(term)) {
+        throw new Error(
+          `${basename(document.filePath)} links to a glossary term "${term}" that does not ` +
+            `exist. Add content/glossary/${term}.mdx, or correct the reference.`,
+        );
+      }
+    }
+  }
+}
+
 /**
  * Widens a draft's partial frontmatter into the full shape the UI reads.
  *

@@ -16,7 +16,9 @@
     "test:coverage": "vitest run --coverage",
     "verify": "yarn format:check && yarn lint && yarn typecheck && yarn test && yarn build",
     "prepare": "husky",
-    "typegen": "next typegen"
+    "typegen": "next typegen",
+    "search-index": "tsx scripts/build-search-index.mts",
+    "prebuild": "yarn search-index"
   },
   "dependencies": {
     "@react-three/fiber": "9.7.0",
@@ -59,6 +61,7 @@
     "prettier": "3.9.6",
     "prettier-plugin-tailwindcss": "0.8.1",
     "tailwindcss": "^4",
+    "tsx": "4.23.12",
     "typescript": "^5",
     "typescript-eslint": "8.67.0",
     "vite": "8.2.1",

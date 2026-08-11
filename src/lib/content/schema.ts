@@ -84,3 +84,52 @@ export interface Heading {
   readonly id: string;
   readonly text: string;
 }
+
+/* ---------------------------------------------------------------------------
+   The other collections
+   ---------------------------------------------------------------------------
+   Held to the same standard as lessons: a missing description is a page that
+   ranks badly and nobody notices, so it stops the build instead.
+--------------------------------------------------------------------------- */
+
+/** A glossary term. Deliberately short — a definition that needs a lesson should be one. */
+export const glossaryFrontmatterSchema = z.object({
+  term: z.string().min(1).max(60),
+  /** Other names for the same thing, so search finds it under any of them. */
+  aliases: z.array(z.string().min(1)).default([]),
+  /** One sentence, used in search results and as the meta description. */
+  summary: z.string().min(20).max(200),
+  related: z.array(slug).default([]),
+  /** Lessons that explain this term properly. */
+  lessons: z.array(slug).default([]),
+});
+
+export type GlossaryFrontmatter = z.infer<typeof glossaryFrontmatterSchema>;
+
+/** Care articles and tips share a shape: a titled piece of prose with SEO metadata. */
+export const articleFrontmatterSchema = z.object({
+  title: z.string().min(1).max(90),
+  description: z
+    .string()
+    .min(50, "too short to work as a search result snippet")
+    .max(160, "search results truncate beyond 160 characters"),
+  publishedAt: isoDate,
+  updatedAt: isoDate.optional(),
+  tags: z.array(z.string().min(1)).default([]),
+  /** Opts into HowTo structured data, for anything genuinely step-by-step. */
+  howTo: z.boolean().default(false),
+  draft: z.boolean().default(false),
+});
+
+export type ArticleFrontmatter = z.infer<typeof articleFrontmatterSchema>;
+
+/** One question and its answer. The body is the answer. */
+export const faqFrontmatterSchema = z.object({
+  question: z.string().min(10).max(160),
+  /** Groups the question on the FAQ page. */
+  topic: z.string().min(1),
+  /** Ordering within a topic; lower comes first. */
+  order: z.number().int().default(100),
+});
+
+export type FaqFrontmatter = z.infer<typeof faqFrontmatterSchema>;

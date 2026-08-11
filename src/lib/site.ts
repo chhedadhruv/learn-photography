@@ -23,5 +23,6 @@ export const PRIMARY_NAV: readonly NavItem[] = [
   { href: "/learn", label: "Learn", description: "Lessons by topic" },
   { href: "/practice", label: "Practice", description: "Camera simulator challenges" },
   { href: "/care", label: "Care", description: "Looking after your kit" },
+  { href: "/tips", label: "Tips", description: "Short, single ideas" },
   { href: "/glossary", label: "Glossary", description: "Plain-English definitions" },
 ] as const;
