@@ -1,0 +1,9 @@
+set -e
+
+# Staged files: formatting + lint (zero warnings tolerated).
+yarn lint-staged
+
+# Whole-project checks. Both are fast enough to run on every commit and both catch problems
+# that staged-file linting cannot: a change here can break a type or a test somewhere else.
+yarn typecheck
+yarn test

@@ -1,0 +1,4 @@
+set -e
+
+# A production build is too slow for every commit, but nothing should reach CI unbuilt.
+yarn build

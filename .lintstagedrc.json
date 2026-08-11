@@ -1,0 +1,5 @@
+{
+  "*.{ts,tsx}": ["prettier --check", "eslint --max-warnings 0 --no-warn-ignored"],
+  "*.{js,mjs,cjs}": ["prettier --check", "eslint --max-warnings 0 --no-warn-ignored"],
+  "*.{json,css,md,mdx,yml,yaml}": ["prettier --check"]
+}
