@@ -1,0 +1,92 @@
+---
+title: "Metering, and why it lies"
+description: "Your camera's meter assumes every scene averages to mid-grey. Knowing when that assumption fails explains most automatic exposure mistakes."
+category: "exposure-and-settings"
+difficulty: "intermediate"
+publishedAt: "2026-08-11"
+tags: ["exposure", "metering", "compensation"]
+related: ["the-exposure-triangle", "iso-and-noise", "camera-modes"]
+
+faqs:
+  - question: "Why did my snow come out grey?"
+    answer: "Because the meter assumed it was mid-grey and exposed it accordingly. Snow should render about two stops brighter than mid-grey, so it needs positive exposure compensation."
+  - question: "Which metering mode should I leave it on?"
+    answer: "Centre-weighted or evaluative for most things — they are right most of the time. Switch to spot when the subject is much brighter or darker than its surroundings, which is exactly when the others fail."
+---
+
+Your camera measures the light before it chooses an exposure. That measurement rests on one
+assumption, and understanding the assumption explains nearly every automatic exposure mistake you
+will see.
+
+## The assumption
+
+A meter assumes that whatever it is pointed at averages out to
+<GlossaryLink term="middle-grey" /> — a tone reflecting about 18% of the light falling on it.
+
+Point a camera at anything and it will choose an exposure that renders that thing as middle grey.
+Point it at a white wall and it gives you a grey wall. Point it at a black cat and it gives you a
+grey cat.
+
+For most scenes this works, because most scenes contain a mixture of light and dark that genuinely
+does average out near the middle.
+
+## Where it fails
+
+Two situations, and they fail in opposite directions.
+
+**A bright background.** A person photographed against a bright sky: the meter reads mostly sky,
+decides the scene is very bright, and cuts the exposure. The sky comes out correct and the face
+comes out dark.
+
+**A uniformly bright or dark scene.** A snow field is not mid-grey — it is snow. The meter reads
+it, renders it as mid-grey, and hands you a photograph of dirty slush. A black cat filling the
+frame comes out grey for the same reason.
+
+<Callout type="warning">
+  The second case is the one that catches people, because there is no bright background to blame
+  and every metering mode agrees with every other. The scene simply is not mid-grey.
+</Callout>
+
+## Metering modes
+
+How much of the frame the camera measures:
+
+- **Average** or **evaluative** reads the whole frame. Right most of the time.
+- **Centre-weighted** reads the whole frame but favours the middle. A reasonable default.
+- **Spot** reads a small area only. Right when the subject is much brighter or darker than
+  everything around it.
+
+Changing the mode fixes the *first* failure — measure less of that bright sky and the reading
+improves. It does nothing for the second, because when the whole frame is snow it does not matter
+how much of it you measure.
+
+## Exposure compensation
+
+<GlossaryLink term="exposure-compensation" /> tells the camera its reading is wrong and by how
+much, without leaving an automatic mode. Set +1 and every photograph comes out one
+<GlossaryLink term="stop" /> brighter than the meter wanted.
+
+Rough starting points:
+
+| Scene | Compensation |
+| --- | --- |
+| Snow, sand, a white wall | +1 to +2 |
+| A subject against a bright sky | +1 to +2 |
+| A dark subject filling the frame | −1 to −2 |
+| A spotlit subject on a dark stage | −1 to −2 |
+
+It only does anything in an automatic mode. In full manual the camera is not choosing the
+exposure, so there is nothing to compensate — you simply set what you want.
+
+## Try both failures
+
+<Simulator challenge="the-whole-room" />
+
+<KeyTakeaways>
+
+- Meters assume the scene averages to middle grey, and expose to make it so.
+- A bright background makes the camera underexpose the subject; the metering mode can fix it.
+- A uniformly bright scene comes out grey, and only compensation can fix it.
+- Compensation does nothing in manual, because nothing is being chosen for you.
+
+</KeyTakeaways>

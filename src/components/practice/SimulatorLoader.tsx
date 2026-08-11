@@ -29,6 +29,8 @@ interface SimulatorLoaderProps {
   /** Start loaded, for a dedicated practice page where the simulator is the whole point. */
   readonly autoStart?: boolean;
   readonly onScored?: ((stars: number) => void) | undefined;
+  readonly nextHref?: string | undefined;
+  readonly nextLabel?: string | undefined;
 }
 
 export function SimulatorLoader({
@@ -36,6 +38,8 @@ export function SimulatorLoader({
   sceneId,
   autoStart = false,
   onScored,
+  nextHref,
+  nextLabel,
 }: SimulatorLoaderProps) {
   const [started, setStarted] = useState(autoStart);
 
@@ -60,7 +64,15 @@ export function SimulatorLoader({
     );
   }
 
-  return <Simulator challenge={challenge} sceneId={sceneId} onScored={onScored} />;
+  return (
+    <Simulator
+      challenge={challenge}
+      sceneId={sceneId}
+      onScored={onScored}
+      nextHref={nextHref}
+      nextLabel={nextLabel}
+    />
+  );
 }
 
 function Skeleton({ label }: { readonly label: string }) {
