@@ -23,7 +23,8 @@ export default async function ChallengePage({ params }: PageProps<"/practice/[ch
   const challenge = getChallenge(id);
   if (!challenge) notFound();
 
-  const { scene, focalLengthMm } = getSceneFor(challenge);
+  // Validates that the scene exists at build time; only its id crosses to the client.
+  const spec = getSceneFor(challenge);
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
@@ -40,12 +41,7 @@ export default async function ChallengePage({ params }: PageProps<"/practice/[ch
 
       <div className="mt-8">
         {/* The practice page exists to run the simulator, so it loads without a further click. */}
-        <SimulatorLoader
-          challenge={challenge}
-          scene={scene}
-          focalLengthMm={focalLengthMm}
-          autoStart
-        />
+        <SimulatorLoader challenge={challenge} sceneId={spec.id} autoStart />
       </div>
     </div>
   );

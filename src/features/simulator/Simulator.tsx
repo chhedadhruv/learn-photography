@@ -1,28 +1,58 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
+import type { Challenge } from "@/lib/challenges/types";
 import { describePhotograph } from "@/lib/sim/describe";
 import { evaluateExposure } from "@/lib/sim/exposure";
-import { startingSettings, subjectEv100, type ControlName } from "@/lib/sim/meter";
+import { subjectEv100, type ControlName } from "@/lib/sim/meter";
+import { setUpChallenge } from "@/lib/challenges/setup";
 import { score, type ScoreResult } from "@/lib/sim/scoring";
 import type { CameraSettings, Scene } from "@/lib/sim/types";
 import { usePrefersReducedMotion } from "@/lib/usePrefersReducedMotion";
-import type { Challenge } from "@/lib/challenges/types";
 import { Controls } from "./Controls";
 import { ExposureMeter } from "./ExposureMeter";
 import { ResultPanel } from "./ResultPanel";
-import { PENDULUM_RIG, effectiveSpeedMps, speedFraction } from "./scene/pendulum";
 import { Viewfinder, type ViewfinderMode } from "./render/Viewfinder";
+import { getSceneSpec } from "./scene";
+import type { SceneSpec } from "./scene/types";
 
 interface SimulatorProps {
   readonly challenge: Challenge;
-  readonly scene: Scene;
-  readonly focalLengthMm: number;
+  readonly sceneId: string;
   readonly onScored?: (stars: number) => void;
 }
 
-export function Simulator({ challenge, scene, focalLengthMm, onScored }: SimulatorProps) {
+/**
+ * Resolves the scene before any hooks run.
+ *
+ * The spec holds functions, which cannot be serialised across the server/client boundary, so the
+ * page sends an id and the lookup happens here. It is a separate component because a conditional
+ * `throw` ahead of hooks would break the rules of hooks — and the React Compiler says so.
+ */
+export function Simulator({ challenge, sceneId, onScored }: SimulatorProps) {
+  const spec = getSceneSpec(sceneId);
+  if (!spec) throw new Error(`Unknown scene "${sceneId}".`);
+
+  return <SimulatorForScene challenge={challenge} spec={spec} onScored={onScored} />;
+}
+
+interface SimulatorForSceneProps {
+  readonly challenge: Challenge;
+  readonly spec: SceneSpec;
+  // Explicitly `| undefined`: with exactOptionalPropertyTypes, forwarding an absent optional
+  // prop is not the same as omitting it.
+  readonly onScored?: ((stars: number) => void) | undefined;
+}
+
+interface Captured {
+  readonly scene: Scene;
+  readonly result: ScoreResult;
+  readonly caughtSlow: boolean;
+}
+
+function SimulatorForScene({ challenge, spec, onScored }: SimulatorForSceneProps) {
   const reducedMotion = usePrefersReducedMotion();
+  const { scene } = spec;
 
   /**
    * Locked controls take the automatic values from the search that proves the level is winnable.
@@ -30,35 +60,21 @@ export function Simulator({ challenge, scene, focalLengthMm, onScored }: Simulat
    * capture scores full marks and teaches nothing.
    */
   const initial = useMemo<CameraSettings>(() => {
-    const auto = startingSettings(
-      {
-        scene,
-        unlocked: challenge.unlocked,
-        focalLengthMm,
-        focusDistanceM: scene.subjectDistanceM,
-      },
-      challenge.startOffsetStops,
-    );
+    const setup = setUpChallenge(challenge, spec);
 
     return (
-      auto ?? {
+      setup?.start ?? {
         shutterSeconds: 1 / 128,
         aperture: 5.656854249492381,
         iso: 100,
-        focalLengthMm,
-        focusDistanceM: scene.subjectDistanceM,
+        focalLengthMm: spec.focalLengthMm,
+        focusDistanceM: spec.focusDistanceM,
       }
     );
-  }, [challenge.startOffsetStops, challenge.unlocked, focalLengthMm, scene]);
+  }, [challenge, spec]);
 
   const [settings, setSettings] = useState<CameraSettings>(initial);
   const [mode, setMode] = useState<ViewfinderMode>("live");
-  interface Captured {
-    readonly scene: Scene;
-    readonly result: ScoreResult;
-    readonly caughtSlow: boolean;
-  }
-
   const [captured, setCaptured] = useState<Captured | null>(null);
 
   const exposure = evaluateExposure(settings, subjectEv100(scene));
@@ -79,14 +95,14 @@ export function Simulator({ challenge, scene, focalLengthMm, onScored }: Simulat
   /**
    * Fired once the accumulation has finished, carrying the instant the exposure was centred on.
    *
-   * The scene is re-derived for that moment: the bob's speed depends on where it was in its
-   * swing, so grading a shot taken near the turning point against the peak speed would report a
-   * blur that is not in the photograph. `effectiveSpeedMps` is the constant speed that produces
-   * exactly the smear that was rendered, which keeps what is graded identical to what is drawn.
+   * The scene is re-derived for that moment: a moving subject's speed depends on where it was in
+   * its cycle, so grading a shot taken at a slow point against the peak speed would report blur
+   * that is not in the photograph. `effectiveSpeedMps` is the constant speed that produces
+   * exactly the smear that was rendered.
    */
   const handleCaptured = useCallback(
     (captureTimeSeconds: number) => {
-      const speed = effectiveSpeedMps(PENDULUM_RIG, settings.shutterSeconds, captureTimeSeconds);
+      const speed = spec.effectiveSpeedMps(settings.shutterSeconds, captureTimeSeconds);
       const capturedScene: Scene = { ...scene, subjectSpeedMps: speed };
 
       const scored = score({ settings, scene: capturedScene, goals: challenge.goals });
@@ -94,14 +110,15 @@ export function Simulator({ challenge, scene, focalLengthMm, onScored }: Simulat
       setCaptured({
         scene: capturedScene,
         result: scored,
-        // Catching the bob at the end of its swing freezes it without a fast shutter. That is a
-        // real photograph and a real skill, but it is not the lesson, so the critique says so.
-        caughtSlow: speedFraction(PENDULUM_RIG, settings.shutterSeconds, captureTimeSeconds) < 0.4,
+        // Catching a moving subject at the slow end of its travel freezes it without a fast
+        // shutter. That is a real photograph and a real skill, but it is not the lesson.
+        caughtSlow:
+          spec.animated && spec.speedFraction(settings.shutterSeconds, captureTimeSeconds) < 0.4,
       });
       setMode("captured");
       onScored?.(scored.stars);
     },
-    [challenge.goals, onScored, scene, settings],
+    [challenge.goals, onScored, scene, settings, spec],
   );
 
   const handleRetake = useCallback(() => {
@@ -109,8 +126,7 @@ export function Simulator({ challenge, scene, focalLengthMm, onScored }: Simulat
     setMode("live");
   }, []);
 
-  // Before a capture, describe the live scene at the bob's peak speed; afterwards, describe the
-  // photograph that was actually taken.
+  // Before a capture, describe the live scene; afterwards, the photograph actually taken.
   const description = describePhotograph(settings, captured?.scene ?? scene);
 
   return (
@@ -120,11 +136,11 @@ export function Simulator({ challenge, scene, focalLengthMm, onScored }: Simulat
             the wrong exposure — this is the neutral a photographer evaluates against. */}
         <div className="rounded-md bg-[var(--color-zone-5)] p-4 sm:p-6">
           <Viewfinder
+            spec={spec}
             settings={settings}
             deviationStops={exposure.deviationStops}
             mode={mode}
             animate={mode === "live" && !reducedMotion}
-            focalLengthMm={focalLengthMm}
             onCaptured={handleCaptured}
           />
         </div>
@@ -159,7 +175,7 @@ export function Simulator({ challenge, scene, focalLengthMm, onScored }: Simulat
             description={description}
             note={
               captured.caughtSlow
-                ? "You caught the bob near the end of its swing, where it is barely moving. That is a legitimate way to get a sharp shot — but try again as it passes through the centre, where shutter speed is what decides it."
+                ? "You caught the subject where it is barely moving. That is a legitimate way to get a sharp shot — but try again as it passes through the middle, where shutter speed is what decides it."
                 : undefined
             }
             onRetake={handleRetake}

@@ -24,6 +24,19 @@ export interface Challenge {
    * clicks right".
    */
   readonly startOffsetStops: number;
+  /**
+   * Values pinned for the locked controls.
+   *
+   * With a single control unlocked, exposure fixes it to one value — so where the locked
+   * controls sit decides what the answer is. Pinning them is how an author aims a
+   * depth-of-field challenge at a wide aperture instead of wherever the automatic mid-range
+   * choice happens to land.
+   */
+  readonly locked?: {
+    readonly shutterSeconds?: number;
+    readonly aperture?: number;
+    readonly iso?: number;
+  };
 }
 
 const controlName = z.enum(["shutter", "aperture", "iso"]);
@@ -47,6 +60,13 @@ export const challengeSchema = z.object({
   hint: z.string().min(10),
   unlocked: z.array(controlName).min(1),
   goals: z.array(goal).min(1),
+  locked: z
+    .object({
+      shutterSeconds: z.number().positive().optional(),
+      aperture: z.number().positive().optional(),
+      iso: z.number().positive().optional(),
+    })
+    .optional(),
   startOffsetStops: z
     .number()
     .int()

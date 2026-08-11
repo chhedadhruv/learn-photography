@@ -3,9 +3,8 @@ import { subjectBlurPx } from "@/lib/sim/motion";
 import { FULL_FRAME } from "@/lib/sim/types";
 import { SHUTTER_SPEEDS, nearestValue } from "@/lib/sim/values";
 import {
-  PENDULUM_FOCAL_LENGTH_MM,
+  PENDULUM,
   PENDULUM_RIG,
-  PENDULUM_SCENE,
   angleAt,
   effectiveSpeedMps,
   horizontalOffsetM,
@@ -117,13 +116,13 @@ describe("scene framing", () => {
         shutterSeconds: s(30),
         aperture: 5.657,
         iso: 100,
-        focalLengthMm: PENDULUM_FOCAL_LENGTH_MM,
+        focalLengthMm: PENDULUM.focalLengthMm,
         focusDistanceM: PENDULUM_RIG.bobDistanceM,
       },
-      PENDULUM_SCENE.subjectSpeedMps,
-      PENDULUM_SCENE.subjectDistanceM,
+      PENDULUM.scene.subjectSpeedMps,
+      PENDULUM.scene.subjectDistanceM,
       FULL_FRAME,
-      PENDULUM_SCENE.imageWidthPx,
+      PENDULUM.scene.imageWidthPx,
     );
 
     // Roughly two rule-widths of smear: unmistakable, not a subtle artefact.
@@ -136,13 +135,13 @@ describe("scene framing", () => {
         shutterSeconds: s(1000),
         aperture: 5.657,
         iso: 100,
-        focalLengthMm: PENDULUM_FOCAL_LENGTH_MM,
+        focalLengthMm: PENDULUM.focalLengthMm,
         focusDistanceM: PENDULUM_RIG.bobDistanceM,
       },
-      PENDULUM_SCENE.subjectSpeedMps,
-      PENDULUM_SCENE.subjectDistanceM,
+      PENDULUM.scene.subjectSpeedMps,
+      PENDULUM.scene.subjectDistanceM,
       FULL_FRAME,
-      PENDULUM_SCENE.imageWidthPx,
+      PENDULUM.scene.imageWidthPx,
     );
 
     expect(blur).toBeLessThan(1);
