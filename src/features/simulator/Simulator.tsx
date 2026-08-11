@@ -19,7 +19,7 @@ import type { SceneSpec } from "./scene/types";
 interface SimulatorProps {
   readonly challenge: Challenge;
   readonly sceneId: string;
-  readonly onScored?: (stars: number) => void;
+  readonly onScored?: ((stars: number) => void) | undefined;
 }
 
 /**

@@ -28,9 +28,15 @@ interface SimulatorLoaderProps {
   readonly sceneId: string;
   /** Start loaded, for a dedicated practice page where the simulator is the whole point. */
   readonly autoStart?: boolean;
+  readonly onScored?: ((stars: number) => void) | undefined;
 }
 
-export function SimulatorLoader({ challenge, sceneId, autoStart = false }: SimulatorLoaderProps) {
+export function SimulatorLoader({
+  challenge,
+  sceneId,
+  autoStart = false,
+  onScored,
+}: SimulatorLoaderProps) {
   const [started, setStarted] = useState(autoStart);
 
   if (!started) {
@@ -54,7 +60,7 @@ export function SimulatorLoader({ challenge, sceneId, autoStart = false }: Simul
     );
   }
 
-  return <Simulator challenge={challenge} sceneId={sceneId} />;
+  return <Simulator challenge={challenge} sceneId={sceneId} onScored={onScored} />;
 }
 
 function Skeleton({ label }: { readonly label: string }) {
