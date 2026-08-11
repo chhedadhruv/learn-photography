@@ -4,7 +4,7 @@ import { useCallback, useMemo, useState } from "react";
 import type { Challenge } from "@/lib/challenges/types";
 import { describePhotograph } from "@/lib/sim/describe";
 import { evaluateExposure } from "@/lib/sim/exposure";
-import { subjectEv100, type ControlName } from "@/lib/sim/meter";
+import { correctExposureEv100, type ControlName } from "@/lib/sim/meter";
 import { setUpChallenge } from "@/lib/challenges/setup";
 import { score, type ScoreResult } from "@/lib/sim/scoring";
 import type { CameraSettings, Scene } from "@/lib/sim/types";
@@ -77,7 +77,7 @@ function SimulatorForScene({ challenge, spec, onScored }: SimulatorForSceneProps
   const [mode, setMode] = useState<ViewfinderMode>("live");
   const [captured, setCaptured] = useState<Captured | null>(null);
 
-  const exposure = evaluateExposure(settings, subjectEv100(scene));
+  const exposure = evaluateExposure(settings, correctExposureEv100(scene));
 
   const handleChange = useCallback((control: ControlName, value: number) => {
     setSettings((previous) => ({

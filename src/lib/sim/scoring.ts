@@ -1,5 +1,5 @@
 import { describeExposure, evaluateExposure, withinStops } from "./exposure";
-import { subjectEv100 } from "./meter";
+import { correctExposureEv100 } from "./meter";
 import { handheldShakePx, subjectBlurPx } from "./motion";
 import { backgroundBlurPx } from "./optics";
 import { formatAperture, formatIso, formatShutter } from "./values";
@@ -63,7 +63,7 @@ function evaluateGoal(goal: Goal, input: ScoreInput): GoalResult {
 
   switch (goal.type) {
     case "exposure": {
-      const result = evaluateExposure(settings, subjectEv100(scene));
+      const result = evaluateExposure(settings, correctExposureEv100(scene));
       const tolerance = goal.toleranceStops ?? 0.5;
       const passed = withinStops(result.deviationStops, tolerance);
 
@@ -222,7 +222,7 @@ export function score(input: ScoreInput): ScoreResult {
 }
 
 function exposureTierStars(input: ScoreInput): 0 | 1 | 2 | 3 {
-  const result = evaluateExposure(input.settings, subjectEv100(input.scene));
+  const result = evaluateExposure(input.settings, correctExposureEv100(input.scene));
   const deviation = Math.abs(result.deviationStops);
 
   for (const tier of EXPOSURE_TIERS) {

@@ -3,7 +3,7 @@ import {
   autoFillLockedControls,
   offsetUnlockedControls,
   solveExposure,
-  subjectEv100,
+  correctExposureEv100,
 } from "@/lib/sim/meter";
 import { evaluateExposure } from "@/lib/sim/exposure";
 import type { CameraSettings } from "@/lib/sim/types";
@@ -34,7 +34,7 @@ export interface ChallengeSetup {
 }
 
 export function setUpChallenge(challenge: Challenge, spec: SceneSpec): ChallengeSetup | null {
-  const targetEv100 = subjectEv100(spec.scene);
+  const targetEv100 = correctExposureEv100(spec.scene);
 
   const auto = autoFillLockedControls({
     scene: spec.scene,

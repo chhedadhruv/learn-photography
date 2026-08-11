@@ -5,7 +5,7 @@ import Image from "next/image";
 import { useCallback, useMemo, useState } from "react";
 import { evaluateExposure } from "@/lib/sim/exposure";
 import { FAULTS, getFault, isFixed, type FaultId } from "@/lib/sim/faults";
-import { subjectEv100, type ControlName } from "@/lib/sim/meter";
+import { correctExposureEv100, type ControlName } from "@/lib/sim/meter";
 import type { CameraSettings } from "@/lib/sim/types";
 import { usePrefersReducedMotion } from "@/lib/usePrefersReducedMotion";
 import { Controls } from "./Controls";
@@ -58,8 +58,8 @@ export function DiagnoseTheMistake({ exercise }: { readonly exercise: DiagnoseEx
   // tell and the order is the same every visit.
   const orderedOptions = FAULTS.filter((fault) => options.includes(fault.id)).map((f) => f.id);
 
-  const exposure = evaluateExposure(settings, subjectEv100(spec.scene));
-  const flawedExposure = evaluateExposure(flawedSettings, subjectEv100(spec.scene));
+  const exposure = evaluateExposure(settings, correctExposureEv100(spec.scene));
+  const flawedExposure = evaluateExposure(flawedSettings, correctExposureEv100(spec.scene));
   const cured = isFixed(exercise.answer, settings, spec.scene);
   const answer = getFault(exercise.answer);
 

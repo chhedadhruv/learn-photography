@@ -3,6 +3,7 @@
 import dynamic from "next/dynamic";
 import type { DiagnoseExercise } from "@content/challenges/diagnose";
 import type { MatchExercise } from "@/features/simulator/MatchThePhoto";
+import type { MeteringExercise } from "@/features/simulator/MeteringTrainer";
 
 /**
  * Lazy entry points for the three-dimensional modules.
@@ -36,4 +37,9 @@ export const LazyDiagnose = dynamic(
   { ssr: false, loading: () => <Skeleton label="Developing the photograph…" /> },
 );
 
-export type { DiagnoseExercise, MatchExercise };
+export const LazyMetering = dynamic(
+  () => import("@/features/simulator/MeteringTrainer").then((m) => m.MeteringTrainer),
+  { ssr: false, loading: () => <Skeleton label="Loading the camera…" /> },
+);
+
+export type { DiagnoseExercise, MatchExercise, MeteringExercise };
