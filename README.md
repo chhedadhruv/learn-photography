@@ -88,6 +88,19 @@ content/        authored MDX lessons and challenge definitions
 public/assets/  brand, icons, images
 ```
 
+## Deploying
+
+Hosted on Vercel, built from `main`. The build runs `yarn search-index` first (via `prebuild`),
+which also validates every glossary cross-reference — so a broken reference fails the deploy rather
+than shipping a dead link.
+
+No environment variables are required. `SITE_URL` is a constant in `src/lib/site.ts` rather than
+configuration, because canonical URLs and the sitemap must name this subdomain regardless of which
+host happens to serve a given request.
+
+Every page is statically generated. There is no server-rendered route, no database and no API, so a
+deploy is a set of files and nothing else.
+
 ## Contributing
 
 Work proceeds in numbered phases, one branch and one pull request each: `phase-N/description`.
