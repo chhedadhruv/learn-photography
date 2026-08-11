@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Breadcrumbs } from "@/components/layout/Breadcrumbs";
-import { SimulatorLoader } from "@/components/practice/SimulatorLoader";
+import { ChallengeRunner } from "@/components/practice/ChallengeRunner";
 import { CHALLENGES, getChallenge, getSceneFor } from "@/lib/challenges/registry";
 
 export function generateStaticParams() {
@@ -40,8 +40,7 @@ export default async function ChallengePage({ params }: PageProps<"/practice/[ch
       <p className="mt-3 max-w-2xl leading-relaxed text-ink-muted">{challenge.brief}</p>
 
       <div className="mt-8">
-        {/* The practice page exists to run the simulator, so it loads without a further click. */}
-        <SimulatorLoader challenge={challenge} sceneId={spec.id} autoStart />
+        <ChallengeRunner challenge={challenge} sceneId={spec.id} />
       </div>
     </div>
   );

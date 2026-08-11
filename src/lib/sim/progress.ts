@@ -113,10 +113,30 @@ export const BADGES: readonly Badge[] = [
       ),
   },
   {
+    id: "halfway",
+    name: "Halfway",
+    description: "Earn half the stars on offer.",
+    earned: (state, levels) => {
+      const total = levels.reduce((sum, level) => sum + level.challengeIds.length * 3, 0);
+      return total > 0 && totalStars(state) >= total / 2;
+    },
+  },
+  {
     id: "full-manual",
     name: "Full Manual",
     description: "Reach the level where every control is yours.",
     earned: (state, levels) => highestUnlockedLevel(state, levels) >= 5,
+  },
+  {
+    id: "every-frame",
+    name: "Every Frame",
+    description: "Three stars on every challenge.",
+    earned: (state, levels) =>
+      levels.every(
+        (level) =>
+          level.challengeIds.length > 0 &&
+          level.challengeIds.every((id) => starsFor(state, id) === 3),
+      ),
   },
 ];
 
@@ -160,4 +180,52 @@ export function parseProgress(raw: string | null): ProgressState {
 
 export function serialiseProgress(state: ProgressState): string {
   return JSON.stringify(state);
+}
+
+/**
+ * Portable progress codes.
+ *
+ * A copyable string rather than an account: it moves progress between devices and doubles as a
+ * backup before someone clears their site data, without a server, a login, or anything to leak.
+ */
+const CODE_PREFIX = "LP1-";
+
+/** UTF-8 safe base64, without the deprecated escape/unescape pair. */
+function toBase64(text: string): string {
+  const bytes = new TextEncoder().encode(text);
+  let binary = "";
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return btoa(binary);
+}
+
+function fromBase64(base64: string): string {
+  const binary = atob(base64);
+  return new TextDecoder().decode(Uint8Array.from(binary, (char) => char.charCodeAt(0)));
+}
+
+export function encodeProgress(state: ProgressState): string {
+  const base64 = toBase64(JSON.stringify(state));
+  // URL-safe, so the code survives being pasted into a chat window or an address bar.
+  return CODE_PREFIX + base64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+/** Returns null for anything unrecognised, so a mistyped code reports a problem rather than
+ *  silently wiping what is already there. */
+export function decodeProgress(code: string): ProgressState | null {
+  const trimmed = code.trim();
+  if (!trimmed.startsWith(CODE_PREFIX)) return null;
+
+  const body = trimmed.slice(CODE_PREFIX.length).replace(/-/g, "+").replace(/_/g, "/");
+  const padded = body + "=".repeat((4 - (body.length % 4)) % 4);
+
+  try {
+    const json = fromBase64(padded);
+    const parsed = parseProgress(json);
+    // parseProgress falls back to empty for anything malformed; an empty result from a non-empty
+    // code means the code was junk rather than a genuine record of no progress.
+    if (Object.keys(parsed.best).length === 0 && !json.includes('"best":{}')) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
 }
