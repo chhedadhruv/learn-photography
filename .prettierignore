@@ -7,3 +7,7 @@ yarn.lock
 next-env.d.ts
 public/search-index.json
 AGENTS.md
+
+# Authored content. Prettier reflows markdown nested inside JSX blocks, which silently collapses
+# lists into paragraphs — it corrupts lessons rather than tidying them.
+content/**/*.mdx

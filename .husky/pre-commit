@@ -1,5 +1,10 @@
 set -e
 
+# Route prop types (PageProps, LayoutProps) are generated into .next/types and do not exist in a
+# clean tree. Both ESLint and tsc need them, and lint-staged calls eslint directly rather than
+# through `yarn lint`, so generate them up front.
+yarn typegen
+
 # Staged files: formatting + lint (zero warnings tolerated).
 yarn lint-staged
 
