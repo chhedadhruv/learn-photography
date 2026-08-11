@@ -43,6 +43,18 @@ export function getSceneFor(challenge: Challenge): SceneSpec {
   return spec;
 }
 
+/**
+ * The challenge after this one, in ladder order.
+ *
+ * Used to turn a finished challenge into a way forward rather than a dead end — three stars and
+ * a "Try again" button is a strange thing to offer someone who has just succeeded.
+ */
+export function getNextChallenge(id: string): Challenge | undefined {
+  const index = CHALLENGES.findIndex((challenge) => challenge.id === id);
+  if (index === -1) return undefined;
+  return CHALLENGES[index + 1];
+}
+
 export function challengesForLevel(level: number): readonly Challenge[] {
   return CHALLENGES.filter((challenge) => challenge.level === level);
 }

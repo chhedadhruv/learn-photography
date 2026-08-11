@@ -14,7 +14,18 @@ import type { Lesson } from "./schema";
  * Listed by slug rather than derived from categories, because the right teaching order crosses
  * category boundaries: you need a little exposure before composition is worth discussing.
  */
-export const LEARNING_PATH: readonly string[] = ["template-example-two", "template-example"];
+export const LEARNING_PATH: readonly string[] = [
+  "what-a-camera-does",
+  "the-exposure-triangle",
+  "shutter-speed",
+  "aperture-and-depth-of-field",
+  "iso-and-noise",
+  "holding-the-camera-steady",
+  "focus-and-what-it-is-for",
+  "camera-modes",
+  "metering-and-why-it-lies",
+  "files-cards-and-what-to-keep",
+];
 
 export interface PathStep {
   readonly lesson: Lesson;

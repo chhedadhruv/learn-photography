@@ -20,6 +20,8 @@ interface SimulatorProps {
   readonly challenge: Challenge;
   readonly sceneId: string;
   readonly onScored?: ((stars: number) => void) | undefined;
+  readonly nextHref?: string | undefined;
+  readonly nextLabel?: string | undefined;
 }
 
 /**
@@ -29,11 +31,19 @@ interface SimulatorProps {
  * page sends an id and the lookup happens here. It is a separate component because a conditional
  * `throw` ahead of hooks would break the rules of hooks — and the React Compiler says so.
  */
-export function Simulator({ challenge, sceneId, onScored }: SimulatorProps) {
+export function Simulator({ challenge, sceneId, onScored, nextHref, nextLabel }: SimulatorProps) {
   const spec = getSceneSpec(sceneId);
   if (!spec) throw new Error(`Unknown scene "${sceneId}".`);
 
-  return <SimulatorForScene challenge={challenge} spec={spec} onScored={onScored} />;
+  return (
+    <SimulatorForScene
+      challenge={challenge}
+      spec={spec}
+      onScored={onScored}
+      nextHref={nextHref}
+      nextLabel={nextLabel}
+    />
+  );
 }
 
 interface SimulatorForSceneProps {
@@ -42,6 +52,8 @@ interface SimulatorForSceneProps {
   // Explicitly `| undefined`: with exactOptionalPropertyTypes, forwarding an absent optional
   // prop is not the same as omitting it.
   readonly onScored?: ((stars: number) => void) | undefined;
+  readonly nextHref?: string | undefined;
+  readonly nextLabel?: string | undefined;
 }
 
 interface Captured {
@@ -50,7 +62,13 @@ interface Captured {
   readonly caughtSlow: boolean;
 }
 
-function SimulatorForScene({ challenge, spec, onScored }: SimulatorForSceneProps) {
+function SimulatorForScene({
+  challenge,
+  spec,
+  onScored,
+  nextHref,
+  nextLabel,
+}: SimulatorForSceneProps) {
   const reducedMotion = usePrefersReducedMotion();
   const { scene } = spec;
 
@@ -179,6 +197,8 @@ function SimulatorForScene({ challenge, spec, onScored }: SimulatorForSceneProps
                 : undefined
             }
             onRetake={handleRetake}
+            nextHref={nextHref}
+            nextLabel={nextLabel}
           />
         ) : (
           <>

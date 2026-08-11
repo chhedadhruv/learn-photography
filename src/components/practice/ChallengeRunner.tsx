@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useState } from "react";
+import { getNextChallenge } from "@/lib/challenges/registry";
 import { starsStillNeeded } from "@/lib/challenges/levels";
 import type { Challenge } from "@/lib/challenges/types";
 import { useProgress } from "@/lib/progress/useProgress";
@@ -28,6 +29,7 @@ export function ChallengeRunner({
   const [skipped, setSkipped] = useState(false);
 
   const unlocked = progress.isUnlocked(challenge.level);
+  const next = getNextChallenge(challenge.id);
   const best = progress.starsFor(challenge.id);
 
   const handleScored = useCallback(
@@ -84,7 +86,13 @@ export function ChallengeRunner({
         </p>
       )}
 
-      <SimulatorLoader challenge={challenge} sceneId={sceneId} onScored={handleScored} autoStart />
+      <SimulatorLoader
+        challenge={challenge}
+        sceneId={sceneId}
+        onScored={handleScored}
+        autoStart
+        {...(next ? { nextHref: `/practice/${next.id}`, nextLabel: next.title } : {})}
+      />
     </div>
   );
 }

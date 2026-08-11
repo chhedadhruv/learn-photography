@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import type { ScoreResult } from "@/lib/sim/scoring";
 
 /**
@@ -14,6 +15,8 @@ export function ResultPanel({
   description,
   note,
   onRetake,
+  nextHref,
+  nextLabel,
 }: {
   readonly result: ScoreResult;
   /** Plain-language account of the photograph, for readers who cannot see the canvas. */
@@ -21,6 +24,9 @@ export function ResultPanel({
   /** Optional coaching about *how* the result was achieved, not just whether it passed. */
   readonly note?: string | undefined;
   readonly onRetake: () => void;
+  /** Where to go next once this is solved. Absent on the last challenge. */
+  readonly nextHref?: string | undefined;
+  readonly nextLabel?: string | undefined;
 }) {
   return (
     <section
@@ -63,13 +69,44 @@ export function ResultPanel({
         ))}
       </ul>
 
-      <button
-        type="button"
-        onClick={onRetake}
-        className="mt-5 rounded-md bg-ink px-4 py-2 text-sm font-medium text-surface"
-      >
-        Try again
-      </button>
+      {/* Succeeding and failing want different offers. Three stars and a "Try again" button
+          reads as though nothing happened; the way forward should be the obvious one, with
+          another attempt still available for anyone who wants to explore. */}
+      <div className="mt-5 flex flex-wrap items-center gap-3">
+        {result.stars === 3 && nextHref !== undefined ? (
+          <>
+            <Link
+              href={nextHref}
+              className="rounded-md bg-ink px-4 py-2 text-sm font-medium text-surface"
+            >
+              {nextLabel ?? "Next challenge"} →
+            </Link>
+            <button type="button" onClick={onRetake} className="text-sm text-ink-muted underline">
+              Try it again
+            </button>
+          </>
+        ) : result.stars === 3 ? (
+          <>
+            <Link
+              href="/practice"
+              className="rounded-md bg-ink px-4 py-2 text-sm font-medium text-surface"
+            >
+              Back to the ladder
+            </Link>
+            <button type="button" onClick={onRetake} className="text-sm text-ink-muted underline">
+              Try it again
+            </button>
+          </>
+        ) : (
+          <button
+            type="button"
+            onClick={onRetake}
+            className="rounded-md bg-ink px-4 py-2 text-sm font-medium text-surface"
+          >
+            Try again
+          </button>
+        )}
+      </div>
     </section>
   );
 }
