@@ -19,4 +19,7 @@ export const freezeThePendulum: Challenge = {
   hint: "The shutter fires the moment you press it, so the bob is caught wherever it happens to be. Every step towards a faster shutter halves the light, and halves how far the bob travels while the shutter is open.",
   unlocked: ["shutter"],
   goals: [{ type: "exposure" }, { type: "freezeMotion", maxBlurPx: 2 }],
+  // Opens three stops too slow: the meter is pegged bright, the frame is washed out, and the bob
+  // is a streak. All three are cured by the same correction.
+  startOffsetStops: 3,
 };

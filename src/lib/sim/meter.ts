@@ -115,6 +115,67 @@ export function autoFillLockedControls(request: AutoFillRequest): CameraSettings
 }
 
 /**
+ * Moves the controls the player operates away from the answer, so there is something to solve.
+ *
+ * `autoFillLockedControls` computes a correct setup in order to prove the level is winnable —
+ * but starting the player on it means pressing capture immediately scores full marks and teaches
+ * nothing. The locked controls keep their automatic values; the unlocked ones are pushed
+ * `offsetStops` away from correct.
+ *
+ * The offset is towards overexposure, so every symptom points the same way: the meter sits right
+ * of centre, the picture is too bright, and — because a slow shutter is what let the extra light
+ * in — the subject is smeared too. One correction fixes all three, which is the lesson.
+ */
+export function offsetUnlockedControls(
+  settings: CameraSettings,
+  unlocked: readonly ControlName[],
+  offsetStops: number,
+): CameraSettings {
+  const shifted = { ...settings };
+
+  if (unlocked.includes("shutter")) {
+    // A longer exposure admits more light: multiply the duration.
+    shifted.shutterSeconds = nearestValue(
+      SHUTTER_SPEEDS,
+      settings.shutterSeconds * 2 ** offsetStops,
+    );
+  }
+  if (unlocked.includes("aperture")) {
+    // A smaller f-number is a wider opening: divide by √2 per stop.
+    shifted.aperture = nearestValue(APERTURES, settings.aperture / Math.SQRT2 ** offsetStops);
+  }
+  if (unlocked.includes("iso")) {
+    shifted.iso = nearestValue(ISOS, settings.iso * 2 ** offsetStops);
+  }
+
+  return shifted;
+}
+
+/**
+ * The settings a challenge opens on: automatic values for the locked controls, and the unlocked
+ * ones deliberately wrong.
+ *
+ * Returns `null` when the level has no solvable setup at all, which is what the build-time check
+ * uses to reject an impossible challenge.
+ */
+export function startingSettings(request: AutoFillRequest, offsetStops = 3): CameraSettings | null {
+  const solved = autoFillLockedControls(request);
+  if (!solved) return null;
+
+  const targetEv100 = request.targetEv100 ?? subjectEv100(request.scene);
+
+  for (const attempt of [offsetStops, -offsetStops, offsetStops - 1, 1 - offsetStops]) {
+    const candidate = offsetUnlockedControls(solved, request.unlocked, attempt);
+
+    // Clamping against the end of a ladder can land back on the answer. If it has, try the
+    // other direction rather than opening on a solved challenge.
+    if (evaluateExposure(candidate, targetEv100).verdict !== "correct") return candidate;
+  }
+
+  return solved;
+}
+
+/**
  * Whether some combination of the unlocked controls exposes correctly, holding the locked ones
  * fixed. With nothing unlocked, the settings themselves must already be right.
  */

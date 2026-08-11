@@ -3,7 +3,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { describePhotograph } from "@/lib/sim/describe";
 import { evaluateExposure } from "@/lib/sim/exposure";
-import { autoFillLockedControls, subjectEv100, type ControlName } from "@/lib/sim/meter";
+import { startingSettings, subjectEv100, type ControlName } from "@/lib/sim/meter";
 import { score, type ScoreResult } from "@/lib/sim/scoring";
 import type { CameraSettings, Scene } from "@/lib/sim/types";
 import { usePrefersReducedMotion } from "@/lib/usePrefersReducedMotion";
@@ -25,16 +25,20 @@ export function Simulator({ challenge, scene, focalLengthMm, onScored }: Simulat
   const reducedMotion = usePrefersReducedMotion();
 
   /**
-   * Locked controls are chosen by the same search that guarantees the unlocked ones can still
-   * reach a correct exposure, so the level is winnable by construction rather than by luck.
+   * Locked controls take the automatic values from the search that proves the level is winnable.
+   * The unlocked ones deliberately start wrong — opening on the answer would mean pressing
+   * capture scores full marks and teaches nothing.
    */
   const initial = useMemo<CameraSettings>(() => {
-    const auto = autoFillLockedControls({
-      scene,
-      unlocked: challenge.unlocked,
-      focalLengthMm,
-      focusDistanceM: scene.subjectDistanceM,
-    });
+    const auto = startingSettings(
+      {
+        scene,
+        unlocked: challenge.unlocked,
+        focalLengthMm,
+        focusDistanceM: scene.subjectDistanceM,
+      },
+      challenge.startOffsetStops,
+    );
 
     return (
       auto ?? {
@@ -45,7 +49,7 @@ export function Simulator({ challenge, scene, focalLengthMm, onScored }: Simulat
         focusDistanceM: scene.subjectDistanceM,
       }
     );
-  }, [challenge.unlocked, focalLengthMm, scene]);
+  }, [challenge.startOffsetStops, challenge.unlocked, focalLengthMm, scene]);
 
   const [settings, setSettings] = useState<CameraSettings>(initial);
   const [mode, setMode] = useState<ViewfinderMode>("live");
